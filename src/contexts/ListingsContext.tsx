@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
-import { Listing, SearchFilters, User } from "../types";
+import { Listing, SearchFilters, User } from "../types"; // Make sure SearchFilters is imported
 import { mockListings } from "../data/mockData";
 import MatchingService from "../lib/matching";
 import { errorHandler } from "../lib/errorHandler";
@@ -243,7 +243,7 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [isSupabaseReady, listings.length]);
+  }, [isSupabaseReady]);
 
   const fetchFavorites = useCallback(async () => {
     if (!user) return;
@@ -326,14 +326,22 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
         }
       }
 
-      if (filters.maxDistance && user?.location?.coordinates) {
+      // Fix for maxDistance: Safely check for user.location and coordinates
+      if (
+        filters.maxDistance !== undefined &&
+        user?.location?.coordinates?.lat !== undefined &&
+        user?.location?.coordinates?.lng !== undefined
+      ) {
+        // user.location.coordinates is now guaranteed to have lat and lng
+        const userCoordinates = user.location.coordinates;
+
         filtered = filtered.filter((listing) => {
           if (!listing.location?.latitude || !listing.location?.longitude)
             return false;
 
           const distance = calculateDistance(
-            user.location!.coordinates!.lat,
-            user.location!.coordinates!.lng,
+            userCoordinates.lat,
+            userCoordinates.lng,
             listing.location.latitude,
             listing.location.longitude
           );
@@ -344,9 +352,9 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
       if (filters.priceRange) {
         filtered = filtered.filter((listing) => {
           const price = listing.price || 0;
-          return (
-            price >= filters.priceRange!.min && price <= filters.priceRange!.max
-          );
+          const minPrice = filters.priceRange?.min ?? 0; // Use nullish coalescing for default
+          const maxPrice = filters.priceRange?.max ?? Infinity; // Use nullish coalescing for default
+          return price >= minPrice && price <= maxPrice;
         });
       }
 
@@ -364,11 +372,24 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
         );
       }
 
-      if (filters.availableFrom) {
+      // Fix for availableFrom: Compare Date objects
+      if (filters.availableFrom instanceof Date) {
+        // Ensure it's a Date object
         filtered = filtered.filter(
           (listing) =>
             listing.availableFrom &&
-            listing.availableFrom <= filters.availableFrom!
+            listing.availableFrom.getTime() >= filters.availableFrom!.getTime() // Compare Date objects
+        );
+      }
+
+      // Handle moveInDate filter
+      // Now using 'filters.moveInDate' directly as it should be defined in types/index.ts
+      if (filters.moveInDate) {
+        const filterDate = new Date(filters.moveInDate);
+        filtered = filtered.filter(
+          (listing) =>
+            listing.availableFrom &&
+            listing.availableFrom.getTime() <= filterDate.getTime()
         );
       }
 
@@ -382,8 +403,11 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
       } else {
         // Default sorting for non-logged-in users
         switch (sortBy) {
-          case "price":
+          case "price-asc": // Changed from "price"
             filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
+            break;
+          case "price-desc": // Added for price high to low
+            filtered.sort((a, b) => (b.price || 0) - (a.price || 0));
             break;
           case "newest":
             filtered.sort((a, b) => {
@@ -414,9 +438,16 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
 
     try {
       console.log("Generating recommendations for user:", user.university);
+      // Ensure relevance and match scores are calculated if they don't exist
+      const listingsWithScores = listings.map((listing) => ({
+        ...listing,
+        matchScore: MatchingService.calculateMatchScore(user, listing),
+        relevanceScore: MatchingService.calculateRelevanceScore(user, listing),
+      }));
+
       const recommendations = MatchingService.getRecommendations(
         user,
-        listings,
+        listingsWithScores, // Pass listings with scores
         6
       );
       console.log("Generated recommendations:", recommendations.length);
@@ -615,14 +646,19 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
 
   useEffect(() => {
     // Only apply filters when we actually have listings loaded
+    // and when filters or sort order change
     if (listings.length > 0 || !isLoading) {
-      applyFiltersAndSorting();
+      performanceMonitor.measureFunction("apply_filters_and_sorting", () => {
+        applyFiltersAndSorting();
+      });
     }
-  }, [applyFiltersAndSorting, listings.length, isLoading]);
+  }, [applyFiltersAndSorting, listings.length, isLoading, filters, sortBy]); // Added filters and sortBy to dependencies
 
   useEffect(() => {
-    generateRecommendations();
-  }, [generateRecommendations]);
+    performanceMonitor.measureFunction("generate_recommendations", () => {
+      generateRecommendations();
+    });
+  }, [generateRecommendations, listings]); // Added listings to dependencies for recommendations
 
   // Memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(

@@ -1,3 +1,4 @@
+// types/index.ts (Verify this file is correct)
 export interface User {
   id: string;
   name: string;
@@ -84,6 +85,19 @@ export interface Listing {
   relevanceScore?: number; // Based on location, university, etc.
 }
 
+export interface SearchFilters {
+  query?: string;
+  location?: string;
+  university?: string | { custom: string };
+  maxDistance?: number; // This was added
+  priceRange?: { min?: number; max?: number };
+  roomType?: string[];
+  amenities?: string[];
+  moveInDate?: string; // This was added
+  availableFrom?: Date; // Ensure this is Date type
+  sortBy?: 'relevance' | 'price' | 'date';
+}
+
 export interface Message {
   id: string;
   senderId: string;
@@ -103,26 +117,6 @@ export interface Conversation {
   lastMessage: Message;
   updatedAt: Date;
   unreadCount: number;
-}
-
-export interface SearchFilters {
-  location?: string;
-  university?: string | { custom: string };
-  maxDistance?: number; // in miles
-  priceRange?: {
-    min: number;
-    max: number;
-  };
-  roomType?: string[];
-  amenities?: string[];
-  availableFrom?: Date;
-  preferences?: {
-    gender?: string;
-    smokingAllowed?: boolean;
-    petsAllowed?: boolean;
-    studyFriendly?: boolean;
-  };
-  sortBy?: 'relevance' | 'price' | 'distance' | 'newest';
 }
 
 export interface MatchingCriteria {

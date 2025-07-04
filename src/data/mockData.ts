@@ -1,3 +1,4 @@
+// src/data/mockData.ts
 import { Listing, User } from '../types';
 import RealAddressService from '../lib/realAddressService';
 
@@ -123,7 +124,8 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 37.8688,
       longitude: -122.2595,
-      nearbyUniversities: ['University of California, Berkeley', 'Berkeley City College'],
+      // CORRECTED: nearbyUniversities now an array of objects
+      nearbyUniversities: [{ name: 'University of California, Berkeley', distance: 0.2 }, { name: 'Berkeley City College', distance: 0.8 }],
     },
     roomType: 'studio',
     amenities: ['Wi-Fi', 'Laundry', 'Kitchen', 'Parking', 'Study Space', 'Air Conditioning'],
@@ -169,7 +171,8 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 37.4419,
       longitude: -122.1430,
-      nearbyUniversities: ['Stanford University'],
+      // CORRECTED: nearbyUniversities now an array of objects
+      nearbyUniversities: [{ name: 'Stanford University', distance: 0.5 }],
     },
     roomType: 'shared',
     amenities: ['Wi-Fi', 'Laundry', 'Kitchen', 'Parking', 'Gym Access', 'Pool', 'Dishwasher'],
@@ -215,7 +218,8 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 34.0619,
       longitude: -118.4473,
-      nearbyUniversities: ['UCLA', 'Santa Monica College'],
+      // CORRECTED: nearbyUniversities now an array of objects
+      nearbyUniversities: [{ name: 'UCLA', distance: 0.7 }, { name: 'Santa Monica College', distance: 4.0 }],
     },
     roomType: 'single',
     amenities: ['Wi-Fi', 'Laundry', 'Kitchen', 'Common Area', 'Study Space', 'Furnished'],
@@ -261,7 +265,12 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 37.7749,
       longitude: -122.4194,
-      nearbyUniversities: ['UC San Francisco', 'University of San Francisco', 'San Francisco State University'],
+      // CORRECTED: nearbyUniversities now an array of objects
+      nearbyUniversities: [
+        { name: 'UC San Francisco', distance: 1.5 },
+        { name: 'University of San Francisco', distance: 2.0 },
+        { name: 'San Francisco State University', distance: 6.0 }
+      ],
     },
     roomType: 'shared',
     amenities: ['Wi-Fi', 'Laundry', 'Kitchen', 'Parking', 'Gym Access', 'Pool', 'Concierge', 'Rooftop Terrace', 'Dishwasher', 'Air Conditioning'],
@@ -306,7 +315,8 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 37.8697,
       longitude: -122.2601,
-      nearbyUniversities: ['University of California, Berkeley'],
+      // CORRECTED: nearbyUniversities now an array of objects
+      nearbyUniversities: [{ name: 'University of California, Berkeley', distance: 0.3 }],
     },
     roomType: 'studio',
     amenities: ['Wi-Fi', 'Laundry', 'Kitchen', 'Gym Access', 'Study Space', 'Air Conditioning', 'Security'],
@@ -351,7 +361,8 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 37.4275,
       longitude: -122.1697,
-      nearbyUniversities: ['Stanford University'],
+      // CORRECTED: nearbyUniversities now an array of objects
+      nearbyUniversities: [{ name: 'Stanford University', distance: 0.1 }],
     },
     roomType: 'shared',
     amenities: ['Wi-Fi', 'Laundry', 'Kitchen', 'Parking', 'Common Area', 'Backyard'],
@@ -396,7 +407,8 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 39.1293,
       longitude: -84.5184,
-      nearbyUniversities: ['University of Cincinnati'],
+      // CORRECTED: nearbyUniversities now an array of objects
+      nearbyUniversities: [{ name: 'University of Cincinnati', distance: 0.4 }],
     },
     roomType: 'apartment',
     amenities: ['Wi-Fi', 'Laundry', 'Kitchen', 'Air Conditioning', 'Dishwasher'],
@@ -430,28 +442,28 @@ export const mockListings: Listing[] = [
 ];
 
 export const amenityOptions = [
-  'Wi-Fi',
-  'Laundry',
-  'Kitchen',
-  'Parking',
-  'Gym Access',
-  'Pool',
-  'Study Space',
-  'Common Area',
-  'Rooftop Terrace',
-  'Concierge',
-  'Air Conditioning',
-  'Heating',
-  'Dishwasher',
-  'Microwave',
-  'Furnished',
+  { value: "Wi-Fi", label: "Wi-Fi" },
+  { value: "Laundry", label: "Laundry" },
+  { value: "Kitchen", label: "Kitchen" },
+  { value: "Parking", label: "Parking" },
+  { value: "Gym Access", label: "Gym Access" },
+  { value: "Pool", label: "Pool" },
+  { value: "Study Space", label: "Study Space" },
+  { value: "Common Area", label: "Common Area" },
+  { value: "Rooftop Terrace", label: "Rooftop Terrace" },
+  { value: "Concierge", label: "Concierge" },
+  { value: "Air Conditioning", label: "Air Conditioning" },
+  { value: "Heating", label: "Heating" },
+  { value: "Dishwasher", label: "Dishwasher" },
+  { value: "Microwave", label: "Microwave" },
+  { value: "Furnished", label: "Furnished" },
 ];
 
 export const roomTypeOptions = [
-  { value: 'single', label: 'Single Room' },
-  { value: 'shared', label: 'Shared Room' },
-  { value: 'studio', label: 'Studio' },
-  { value: 'apartment', label: 'Full Apartment' },
+  { value: "single", label: "Single Room" },
+  { value: "shared", label: "Shared Room" },
+  { value: "studio", label: "Studio" },
+  { value: "apartment", label: "Full Apartment" },
 ];
 
 export const universityOptions = [

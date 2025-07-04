@@ -8,7 +8,6 @@ import {
   Car,
   Utensils,
   Home,
-  Target,
   CaseSensitive as University,
 } from "lucide-react";
 import { Listing } from "../types";
@@ -83,6 +82,9 @@ const ListingCard: React.FC<ListingCardProps> = ({
 
   // Safe data extraction with fallbacks
   const nearbyUniversities = listing.location?.nearbyUniversities || [];
+  const nearestUniversity =
+    nearbyUniversities.length > 0 ? nearbyUniversities[0] : null;
+
   const isNearUserUniversity =
     user?.university &&
     nearbyUniversities.some((uni) => uni.name === user.university);
@@ -94,25 +96,12 @@ const ListingCard: React.FC<ListingCardProps> = ({
   };
   const location = listing.location || { city: "Unknown Location" };
   const price = typeof listing.price === "number" ? listing.price : 0;
-  const deposit = typeof listing.deposit === "number" ? listing.deposit : null;
 
   // Sanitize user-generated content
   const safeTitle = sanitizeHtml(listing.title || "Untitled Listing");
   const safeDescription = sanitizeHtml(
     listing.description || "No description available."
   );
-
-  const distanceToUniversity =
-    user?.university && user?.location?.coordinates
-      ? formatDistance(
-          calculateDistance(
-            user.location.coordinates.lat,
-            user.location.coordinates.lng,
-            listing.location.latitude,
-            listing.location.longitude
-          )
-        )
-      : null;
 
   return (
     <div
@@ -199,60 +188,30 @@ const ListingCard: React.FC<ListingCardProps> = ({
           <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 flex-1 mr-4">
             {safeTitle}
           </h3>
-
-          <div className="flex items-center space-x-1">
-            <p className="text-lg font-bold text-blue-600">${price}</p>
-            <span className="text-sm text-gray-500">/ month</span>
+          <div className="flex-shrink-0">
+            <span className="text-xl font-bold text-gray-900">${price}</span>
+            <span className="text-sm text-gray-500">/mo</span>
           </div>
         </div>
 
-        {/* Location & University */}
-        <div className="space-y-2 text-sm text-gray-600 mb-4">
-          <div className="flex items-center space-x-2">
-            <MapPin className="w-4 h-4 text-gray-400" />
-            <span>{location.city}</span>
+        {/* University & Location Info */}
+        {nearestUniversity && (
+          <div className="flex items-center text-sm text-gray-600 mb-2">
+            <University className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+            <span className="line-clamp-1">
+              {formatDistance(nearestUniversity.distance)} from{" "}
+              <strong>{nearestUniversity.name}</strong>
+            </span>
           </div>
-          {nearbyUniversities.length > 0 && (
-            <div className="flex items-center space-x-2">
-              <University className="w-4 h-4 text-gray-400" />
-              <span>
-                {formatDistance(nearbyUniversities[0].distance)} from{" "}
-                {nearbyUniversities[0].name}
-              </span>
-            </div>
-          )}
+        )}
+
+        <div className="flex items-center text-sm text-gray-600 mb-3">
+          <MapPin className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+          <span className="line-clamp-1">{location.city}</span>
         </div>
 
-        {/* Description */}
-        <p
-          className="text-sm text-gray-600 line-clamp-2 mb-4"
-          title={safeDescription}
-        >
-          {safeDescription}
-        </p>
-
-        {/* Amenities */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {amenities.slice(0, 3).map((amenity, index) => (
-            <div
-              key={`${amenity}-${index}`}
-              className="flex items-center space-x-1 bg-gray-50 px-2 py-1 rounded-full text-xs text-gray-600"
-            >
-              {getAmenityIcon(amenity)}
-              <span className="truncate max-w-20" title={amenity}>
-                {amenity}
-              </span>
-            </div>
-          ))}
-          {amenities.length > 3 && (
-            <div className="bg-gray-50 px-2 py-1 rounded-full text-xs text-gray-600">
-              +{amenities.length - 3} more
-            </div>
-          )}
-        </div>
-
-        {/* Host Info */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+        {/* Key Details */}
+        <div className="flex items-center justify-between text-sm text-gray-600 border-t border-gray-100 pt-3">
           <div className="flex items-center space-x-3 flex-1 min-w-0">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-white text-sm font-medium">
