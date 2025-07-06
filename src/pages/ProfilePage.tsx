@@ -1,75 +1,270 @@
-import React, { useState } from 'react';
-import { Edit3, Save, X, MapPin, GraduationCap, Calendar, Mail, Phone } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useListings } from '../contexts/ListingsContext';
-import { universityOptions } from '../data/mockData';
-import ListingCard from '../components/ListingCard';
-import ProfileImageUpload from '../components/ProfileImageUpload';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import {
+  Edit3,
+  Save,
+  X,
+  MapPin,
+  GraduationCap,
+  Calendar,
+  Mail,
+  Phone,
+  LocateFixed,
+  Globe,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { useListings } from "../contexts/ListingsContext";
+import { universityOptions } from "../data/mockData";
+import ListingCard from "../components/ListingCard";
+import ProfileImageUpload from "../components/ProfileImageUpload";
+import { useNavigate } from "react-router-dom";
+import GeocodingService from "../utils/geocoding";
+// Removed unused imports: calculateDistance, formatDistance
+// import { calculateDistance, formatDistance } from '../utils/haversine';
 
 const ProfilePage: React.FC = () => {
   const { user, logout, updateProfile } = useAuth();
   const { listings } = useListings();
   const navigate = useNavigate();
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+
+  // Initialize formData with user's current data
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    bio: user?.bio || '',
-    university: user?.university || '',
-    year: user?.year || '',
-    phone: user?.phone || '',
-    profilePicture: user?.profilePicture || '',
+    name: user?.name || "",
+    bio: user?.bio || "",
+    university: user?.university || "",
+    year: user?.year || "",
+    phone: user?.phone || "",
+    profilePicture: user?.profilePicture || "",
+    // Initialize location fields from user object
+    locationAddress: user?.location?.address || "",
+    locationCity: user?.location?.city || "",
+    locationState: user?.location?.state || "",
+    locationCountry: user?.location?.country || "USA",
+    locationLat: user?.location?.coordinates?.lat,
+    locationLng: user?.location?.coordinates?.lng,
   });
 
-  const userListings = listings.filter(listing => listing.hostId === user?.id);
+  // Effect to update formData if user object changes (e.g., after initial load or a successful update)
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || "",
+        bio: user.bio || "",
+        university: user.university || "",
+        year: user.year || "",
+        phone: user.phone || "",
+        profilePicture: user.profilePicture || "",
+        locationAddress: user.location?.address || "",
+        locationCity: user.location?.city || "",
+        locationState: user.location?.state || "",
+        locationCountry: user.location?.country || "USA",
+        locationLat: user.location?.coordinates?.lat,
+        locationLng: user.location?.coordinates?.lng,
+      });
+    }
+  }, [user]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData(prev => ({
+  const userListings = listings.filter(
+    (listing) => listing.hostId === user?.id
+  );
+
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     }));
   };
 
   const handleProfileImageChange = (imageUrl: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      profilePicture: imageUrl
+      profilePicture: imageUrl,
     }));
   };
 
   const handleSave = async () => {
     setIsSaving(true);
+    setLocationError(null);
+
+    // Construct the location object to pass to updateProfile
+    const updatedLocation = {
+      address: formData.locationAddress, // Now safe as 'address' is in User.location type
+      city: formData.locationCity,
+      state: formData.locationState,
+      country: formData.locationCountry,
+      coordinates: {
+        lat: formData.locationLat || 0, // Default to 0 if null/undefined
+        lng: formData.locationLng || 0, // Default to 0 if null/undefined
+      },
+    };
+
     try {
-      await updateProfile(formData);
+      await updateProfile({
+        name: formData.name,
+        bio: formData.bio,
+        university: formData.university,
+        year: formData.year,
+        phone: formData.phone,
+        profilePicture: formData.profilePicture,
+        location: updatedLocation, // Pass the constructed location object
+      });
       setIsEditing(false);
-    } catch (error) {
-      console.error('Error updating profile:', error);
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      // More specific error handling could be implemented here
+      setLocationError(error.message || "Failed to update profile.");
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleCancel = () => {
+    // Reset formData to original user values
     setFormData({
-      name: user?.name || '',
-      bio: user?.bio || '',
-      university: user?.university || '',
-      year: user?.year || '',
-      phone: user?.phone || '',
-      profilePicture: user?.profilePicture || '',
+      name: user?.name || "",
+      bio: user?.bio || "",
+      university: user?.university || "",
+      year: user?.year || "",
+      phone: user?.phone || "",
+      profilePicture: user?.profilePicture || "",
+      locationAddress: user?.location?.address || "", // Now safe
+      locationCity: user?.location?.city || "",
+      locationState: user?.location?.state || "",
+      locationCountry: user?.location?.country || "USA",
+      locationLat: user?.location?.coordinates?.lat,
+      locationLng: user?.location?.coordinates?.lng,
     });
     setIsEditing(false);
+    setLocationError(null);
+    setLocationLoading(false);
+  };
+
+  const handleGeocodeAddress = async () => {
+    setLocationLoading(true);
+    setLocationError(null);
+    const fullAddress = `${formData.locationAddress}, ${formData.locationCity}, ${formData.locationState}, ${formData.locationCountry}`;
+    try {
+      const result = await GeocodingService.geocodeAddress(fullAddress);
+      if (
+        result.success &&
+        typeof result.latitude === "number" &&
+        typeof result.longitude === "number"
+      ) {
+        // Ensure lat/lng are numbers
+        setFormData((prev) => ({
+          ...prev,
+          locationLat: result.latitude,
+          locationLng: result.longitude,
+          locationAddress: result.formattedAddress ?? formData.locationAddress, // Use nullish coalescing
+          // Optionally parse city/state from formatted_address if more accurate
+          // locationCity: ..., locationState: ...,
+        }));
+        console.log("Address geocoded:", result);
+      } else {
+        setLocationError(
+          result.error || "Could not find coordinates for this address."
+        );
+      }
+    } catch (err) {
+      console.error("Geocoding failed:", err);
+      setLocationError("Failed to geocode address. Please try again.");
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const handleGetGeolocation = async () => {
+    setLocationLoading(true);
+    setLocationError(null);
+    try {
+      const position = await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0,
+          });
+        }
+      );
+
+      const { latitude, longitude } = position.coords;
+
+      const reverseGeocodeResult = await GeocodingService.reverseGeocode(
+        latitude,
+        longitude
+      );
+      let city = "Unknown City";
+      let state = "Unknown State";
+      let country = "USA";
+      let address = "";
+
+      if (
+        reverseGeocodeResult.success &&
+        reverseGeocodeResult.formattedAddress
+      ) {
+        address = reverseGeocodeResult.formattedAddress;
+        const addressComponents = reverseGeocodeResult.formattedAddress
+          .split(",")
+          .map((s) => s.trim());
+        // Simple heuristic for city/state/country from formatted string, can be improved
+        // Example: If formattedAddress is "123 Main St, Anytown, CA 90210, USA"
+        if (addressComponents.length >= 4) {
+          // Requires at least 4 parts: street, city, state, zip/country
+          city = addressComponents[addressComponents.length - 3]; // Anytown
+          state = addressComponents[addressComponents.length - 2]; // CA 90210
+          country = addressComponents[addressComponents.length - 1]; // USA
+        } else if (addressComponents.length >= 3) {
+          // Less precise, maybe just city, state, country
+          city = addressComponents[0];
+          state = addressComponents[1];
+          country = addressComponents[2];
+        }
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        locationLat: latitude,
+        locationLng: longitude,
+        locationAddress: address || "", // Use the full address string from reverse geocoding, or empty
+        locationCity: city,
+        locationState: state,
+        locationCountry: country,
+      }));
+      console.log("Geolocation obtained and reverse geocoded.");
+    } catch (err: any) {
+      if (err.code === err.PERMISSION_DENIED) {
+        setLocationError(
+          "Geolocation permission denied. Please enable location services in your browser settings."
+        );
+      } else {
+        setLocationError(
+          "Failed to get current location. " +
+            (err.message || "Please try again.")
+        );
+      }
+      console.error("Geolocation error:", err);
+    } finally {
+      setLocationLoading(false);
+    }
   };
 
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Please log in</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Please log in
+          </h2>
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate("/login")}
             className="text-blue-600 hover:text-blue-700"
           >
             Go to Login
@@ -85,13 +280,15 @@ const ProfilePage: React.FC = () => {
         {/* Profile Header */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
           <div className="h-32 bg-gradient-to-r from-blue-500 to-teal-500"></div>
-          
+
           <div className="px-6 pb-6">
             <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-6 -mt-16">
               {/* Profile Picture */}
               <div className="relative">
                 <ProfileImageUpload
-                  currentImage={isEditing ? formData.profilePicture : user.profilePicture}
+                  currentImage={
+                    isEditing ? formData.profilePicture : user.profilePicture
+                  }
                   onImageChange={handleProfileImageChange}
                   userName={user.name}
                   disabled={!isEditing}
@@ -112,9 +309,11 @@ const ProfilePage: React.FC = () => {
                         className="text-2xl font-bold text-gray-900 bg-transparent border-b border-gray-300 focus:border-blue-500 outline-none"
                       />
                     ) : (
-                      <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
+                      <h1 className="text-2xl font-bold text-gray-900">
+                        {user.name}
+                      </h1>
                     )}
-                    
+
                     <div className="flex items-center space-x-4 mt-2 text-gray-600">
                       <div className="flex items-center space-x-1">
                         <GraduationCap className="w-4 h-4" />
@@ -137,15 +336,16 @@ const ProfilePage: React.FC = () => {
                       <>
                         <button
                           onClick={handleSave}
-                          disabled={isSaving}
+                          disabled={isSaving || locationLoading} // Disable save while location is loading
                           className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                         >
                           <Save className="w-4 h-4" />
-                          <span>{isSaving ? 'Saving...' : 'Save'}</span>
+                          <span>{isSaving ? "Saving..." : "Save"}</span>
                         </button>
                         <button
                           onClick={handleCancel}
-                          className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                          disabled={isSaving || locationLoading}
+                          className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                         >
                           <X className="w-4 h-4" />
                           <span>Cancel</span>
@@ -172,7 +372,9 @@ const ProfilePage: React.FC = () => {
           <div className="lg:col-span-1 space-y-6">
             {/* About */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">About</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                About
+              </h2>
               {isEditing ? (
                 <textarea
                   name="bio"
@@ -184,14 +386,16 @@ const ProfilePage: React.FC = () => {
                 />
               ) : (
                 <p className="text-gray-700">
-                  {user.bio || 'No bio added yet.'}
+                  {user.bio || "No bio added yet."}
                 </p>
               )}
             </div>
 
             {/* Contact Info */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Contact Information
+              </h2>
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <Mail className="w-4 h-4 text-gray-400" />
@@ -220,7 +424,9 @@ const ProfilePage: React.FC = () => {
 
             {/* University Info */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">University</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                University
+              </h2>
               <div className="space-y-3">
                 {isEditing ? (
                   <>
@@ -234,8 +440,10 @@ const ProfilePage: React.FC = () => {
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
-                        {universityOptions.map(uni => (
-                          <option key={uni} value={uni}>{uni}</option>
+                        {universityOptions.map((uni) => (
+                          <option key={uni} value={uni}>
+                            {uni}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -273,9 +481,140 @@ const ProfilePage: React.FC = () => {
               </div>
             </div>
 
+            {/* Location Information */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Location Information
+              </h2>
+              {isEditing ? (
+                <div className="space-y-3">
+                  {/* Address fields */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Address
+                    </label>
+                    <input
+                      type="text"
+                      name="locationAddress"
+                      value={formData.locationAddress}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Street address (e.g., 123 Main St)"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        City
+                      </label>
+                      <input
+                        type="text"
+                        name="locationCity"
+                        value={formData.locationCity}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="City"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        State
+                      </label>
+                      <input
+                        type="text"
+                        name="locationState"
+                        value={formData.locationState}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="State (e.g., CA)"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      name="locationCountry"
+                      value={formData.locationCountry}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Country (e.g., USA)"
+                    />
+                  </div>
+                  {/* Geocoding actions */}
+                  <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                    <button
+                      type="button"
+                      onClick={handleGeocodeAddress}
+                      disabled={locationLoading}
+                      className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                    >
+                      {locationLoading ? (
+                        <Globe className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Globe className="w-4 h-4" />
+                      )}
+                      <span>Geocode Address</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleGetGeolocation}
+                      disabled={locationLoading}
+                      className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                    >
+                      {locationLoading ? (
+                        <LocateFixed className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <LocateFixed className="w-4 h-4" />
+                      )}
+                      <span>Use Current Location</span>
+                    </button>
+                  </div>
+                  {locationError && (
+                    <p className="text-red-600 text-sm mt-2">{locationError}</p>
+                  )}
+                  {/* Display current coordinates (for debugging/info) */}
+                  {typeof formData.locationLat === "number" &&
+                    typeof formData.locationLng === "number" && (
+                      <p className="text-sm text-gray-500 mt-2">
+                        Coordinates: {formData.locationLat.toFixed(4)},{" "}
+                        {formData.locationLng.toFixed(4)}
+                      </p>
+                    )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-3">
+                    <MapPin className="w-4 h-4 text-gray-400 mt-1" />
+                    <div>
+                      <p className="text-gray-700">
+                        {user.location?.address || "N/A"}
+                      </p>
+                      <p className="text-gray-700">
+                        {user.location?.city || "N/A"},{" "}
+                        {user.location?.state || "N/A"},{" "}
+                        {user.location?.country || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                  {user.location?.coordinates?.lat &&
+                    user.location?.coordinates?.lng && (
+                      <p className="text-sm text-gray-500">
+                        (Lat: {user.location.coordinates.lat.toFixed(4)}, Lng:{" "}
+                        {user.location.coordinates.lng.toFixed(4)})
+                      </p>
+                    )}
+                </div>
+              )}
+            </div>
+
             {/* Account Actions */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Account</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Account
+              </h2>
               <div className="space-y-3">
                 <button className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                   Change Password
@@ -297,9 +636,11 @@ const ProfilePage: React.FC = () => {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-gray-900">My Listings</h2>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  My Listings
+                </h2>
                 <button
-                  onClick={() => navigate('/create')}
+                  onClick={() => navigate("/create")}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Create New Listing
@@ -318,7 +659,7 @@ const ProfilePage: React.FC = () => {
                     Create your first listing to start hosting students
                   </p>
                   <button
-                    onClick={() => navigate('/create')}
+                    onClick={() => navigate("/create")}
                     className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     Create Listing

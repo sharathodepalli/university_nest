@@ -21,7 +21,8 @@ export class MatchingService {
       (uni) => uni.name === user.university
     );
 
-    if (userUniversity?.coordinates && listing.location.latitude) {
+    // Use official university coordinates for proximity scoring
+    if (userUniversity?.coordinates && typeof listing.location.latitude === 'number' && typeof listing.location.longitude === 'number') {
       const distance = calculateDistance(
         userUniversity.coordinates.lat,
         userUniversity.coordinates.lng,
@@ -37,7 +38,7 @@ export class MatchingService {
       else if (distance <= 20) score += 15; // Reasonable commute
       else score += 5; // Far but manageable
     } else {
-      // Fallback for listings near the university by name
+      // Fallback for listings near the university by name if coordinates are missing
       const nearbyUniversities = listing.location.nearbyUniversities || [];
       if (
         Array.isArray(nearbyUniversities) &&
@@ -54,81 +55,81 @@ export class MatchingService {
     if (user.preferences?.maxBudget && typeof user.preferences.maxBudget === 'number') {
       const utilitiesCost = listing.utilities?.cost || 0;
       const totalCost = listing.price + (listing.utilities?.included ? 0 : utilitiesCost);
-      
+
       if (totalCost <= user.preferences.maxBudget) {
-        // Perfect score if within budget
         const budgetUtilization = totalCost / user.preferences.maxBudget;
         if (budgetUtilization <= 0.8) {
-          score += 25; // Great value
+          score += 25; // Great value (20% under budget or more)
         } else {
-          score += 20; // Good value
+          score += 20; // Good value (within budget)
         }
       } else {
-        // Penalty for over budget
+        // Penalty for over budget, capped at max score for this category
         const overBudget = totalCost - user.preferences.maxBudget;
         const penalty = Math.min(25, (overBudget / user.preferences.maxBudget) * 25);
-        score += Math.max(0, 25 - penalty);
+        score += Math.max(0, 25 - penalty); // Ensure score doesn't go below 0 for this category
       }
     } else {
-      score += 15; // Default score if no budget set
+      score += 15; // Default score if no budget set by user
     }
 
     // Room type preference (15% weight)
     maxScore += 15;
-    if (user.preferences?.preferredRoomTypes && 
+    if (user.preferences?.preferredRoomTypes &&
         Array.isArray(user.preferences.preferredRoomTypes) &&
         user.preferences.preferredRoomTypes.includes(listing.roomType)) {
       score += 15;
     } else {
-      score += 5; // Partial score for flexibility
+      score += 5; // Partial score for flexibility if preference not met
     }
 
     // Lifestyle compatibility (15% weight)
     maxScore += 15;
     let lifestyleScore = 0;
-    
-    const listingPrefs = listing.preferences || {};
+
+    const listingPrefs = listing.preferences || {}; // Ensure listingPrefs is an object
     if (user.preferences) {
       // Study environment is most important for students
-      if (typeof user.preferences.studyFriendly === 'boolean' && 
+      if (typeof user.preferences.studyFriendly === 'boolean' &&
           user.preferences.studyFriendly === listingPrefs.studyFriendly) {
         lifestyleScore += 8;
       }
-      
-      if (typeof user.preferences.smokingAllowed === 'boolean' && 
+
+      if (typeof user.preferences.smokingAllowed === 'boolean' &&
           user.preferences.smokingAllowed === listingPrefs.smokingAllowed) {
         lifestyleScore += 4;
       }
-      
-      if (typeof user.preferences.petsAllowed === 'boolean' && 
+
+      if (typeof user.preferences.petsAllowed === 'boolean' &&
           user.preferences.petsAllowed === listingPrefs.petsAllowed) {
         lifestyleScore += 3;
       }
     }
-    
+
     score += lifestyleScore;
 
     // Amenities match (10% weight)
     maxScore += 10;
-    if (user.preferences?.preferredAmenities && 
+    if (user.preferences?.preferredAmenities &&
         Array.isArray(user.preferences.preferredAmenities) &&
         listing.amenities && Array.isArray(listing.amenities)) {
       const matchedAmenities = user.preferences.preferredAmenities.filter(
         amenity => listing.amenities.includes(amenity)
       );
-      const amenityScore = user.preferences.preferredAmenities.length > 0 
+      const amenityScore = user.preferences.preferredAmenities.length > 0
         ? (matchedAmenities.length / user.preferences.preferredAmenities.length) * 10
-        : 5;
+        : 5; // Default if no preferred amenities
       score += amenityScore;
     } else {
-      score += 5; // Default score
+      score += 5; // Default score if user has no preferred amenities set
     }
 
-    return Math.round((score / maxScore) * 100);
+    // Ensure score is within 0-100 bounds and rounded
+    return Math.round(Math.max(0, Math.min(100, (score / maxScore) * 100)));
   }
 
   /**
-   * Calculate relevance score based on user's context
+   * Calculate relevance score based on user's context (e.g., same university, local area, newness)
    */
   static calculateRelevanceScore(user: User, listing: Listing): number {
     if (!user || !listing || !listing.location || !user.university) {
@@ -143,17 +144,17 @@ export class MatchingService {
       score += 50;
     }
 
-    // Geographic proximity (30 points)
-    if (user.location?.city && listing.location.city && 
+    // Geographic proximity (30 points) based on city/state
+    if (user.location?.city && listing.location.city &&
         user.location.city === listing.location.city) {
       score += 30;
-    } else if (user.location?.state && listing.location.state && 
+    } else if (user.location?.state && listing.location.state &&
                user.location.state === listing.location.state) {
       score += 20;
     }
 
     // Recent listings get boost (20 points)
-    if (listing.createdAt && listing.createdAt instanceof Date) {
+    if (listing.createdAt instanceof Date) {
       const daysSinceCreated = (Date.now() - listing.createdAt.getTime()) / (1000 * 60 * 60 * 24);
       if (daysSinceCreated <= 7) {
         score += 20;
@@ -162,11 +163,11 @@ export class MatchingService {
       }
     }
 
-    return Math.min(100, score);
+    return Math.min(100, score); // Cap score at 100
   }
 
   /**
-   * Filter listings based on user's matching criteria
+   * Filter listings based on user's matching criteria (e.g., max distance, same university, budget)
    */
   static filterListingsForUser(user: User, listings: Listing[]): Listing[] {
     if (!user || !Array.isArray(listings)) {
@@ -174,76 +175,96 @@ export class MatchingService {
     }
 
     return listings.filter(listing => {
-      // Basic safety checks
+      // Basic safety checks for listing validity
       if (!listing || !listing.location) return false;
-      
+
       // Don't show user's own listings
       if (listing.hostId === user.id) return false;
 
       const criteria = user.matchingPreferences;
-      if (!criteria) return true; // No criteria, show all
+      if (!criteria) return true; // No specific criteria set by user, show all eligible listings
 
-      // Distance filter
-      if (criteria.maxDistance && user.location?.coordinates) {
-        const distance = calculateDistance(
-          user.location.coordinates.lat,
-          user.location.coordinates.lng,
-          listing.location.latitude,
-          listing.location.longitude
-        );
-        if (distance > criteria.maxDistance) return false;
+      // Distance filter: from user's current location to listing
+      // Corrected: Add check for valid user coordinates (not 0,0)
+      if (criteria.maxDistance && user.location?.coordinates?.lat !== undefined && user.location?.coordinates?.lng !== undefined &&
+          (user.location.coordinates.lat !== 0 || user.location.coordinates.lng !== 0)) {
+        const userLat = user.location.coordinates.lat;
+        const userLng = user.location.coordinates.lng;
+
+        // Ensure listing also has valid coordinates for distance calculation
+        if (typeof listing.location.latitude === 'number' && typeof listing.location.longitude === 'number' &&
+            (listing.location.latitude !== 0 || listing.location.longitude !== 0)) {
+            const distance = calculateDistance(
+                userLat,
+                userLng,
+                listing.location.latitude,
+                listing.location.longitude
+            );
+            if (distance > criteria.maxDistance) {
+                return false; // Filter out if beyond max distance
+            }
+        } else {
+            // If listing has invalid coords, consider it not matching the distance filter
+            return false;
+        }
       }
 
-      // University filter (if strict preference is set)
+      // University filter (if strict preference is set to only show same university)
       if (user.matchingPreferences?.sameUniversity) {
         const nearbyUniversities = listing.location.nearbyUniversities || [];
         if (!Array.isArray(nearbyUniversities) || !nearbyUniversities.some(uni => uni.name === user.university)) {
-          return false;
+          return false; // Filter out if not near user's university
         }
       }
 
-      // Budget filter
+      // Budget filter (total cost within user's preferred range)
       if (user.matchingPreferences?.budgetRange) {
         const utilitiesCost = listing.utilities?.cost || 0;
         const totalCost = listing.price + (listing.utilities?.included ? 0 : utilitiesCost);
-        if (totalCost < user.matchingPreferences.budgetRange.min || 
+        if (totalCost < user.matchingPreferences.budgetRange.min ||
             totalCost > user.matchingPreferences.budgetRange.max) {
-          return false;
+          return false; // Filter out if outside budget range
         }
       }
 
-      return true;
+      return true; // Listing passed all active filters
     });
   }
 
   /**
-   * Sort listings by relevance and match score
+   * Sort listings by relevance, match score, distance, or price.
    */
   static sortListings(
     listings: Listing[],
     sortBy: string,
     user?: User
   ): Listing[] {
+    // Return a shallow copy to avoid mutating the original array
+    const sorted = [...listings];
+
     switch (sortBy) {
       case "relevance":
-        return [...listings].sort((a, b) => {
-          const scoreA = a.relevanceScore || 0;
-          const scoreB = b.relevanceScore || 0;
-          return scoreB - scoreA;
-        });
+        // Assumes relevanceScore is calculated and attached to Listing objects prior to sorting
+        return sorted.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
       case "match":
-        return [...listings].sort((a, b) => {
-          const scoreA = a.matchScore || 0;
-          const scoreB = b.matchScore || 0;
-          return scoreB - scoreA;
-        });
+        // Assumes matchScore is calculated and attached to Listing objects prior to sorting
+        return sorted.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
       case "distance":
-        if (user?.location?.coordinates) {
+        // Sort by distance from user's location, if valid user coordinates are available
+        // Corrected: Add check for valid user coordinates (not 0,0)
+        if (user?.location?.coordinates?.lat !== undefined && user?.location?.coordinates?.lng !== undefined &&
+            (user.location.coordinates.lat !== 0 || user.location.coordinates.lng !== 0)) {
           const userLat = user.location.coordinates.lat;
           const userLng = user.location.coordinates.lng;
 
-          return [...listings].sort((a, b) => {
-            if (!a.location?.latitude || !b.location?.latitude) return 0;
+          return sorted.sort((a, b) => {
+            // If listing coordinates are missing or 0,0, push them to the end (effectively treating as "far")
+            const aHasValidCoords = typeof a.location?.latitude === 'number' && typeof a.location?.longitude === 'number' && (a.location.latitude !== 0 || a.location.longitude !== 0);
+            const bHasValidCoords = typeof b.location?.latitude === 'number' && typeof b.location?.longitude === 'number' && (b.location.latitude !== 0 || b.location.longitude !== 0);
+
+            if (!aHasValidCoords && !bHasValidCoords) return 0; // Both invalid, keep original order
+            if (!aHasValidCoords) return 1; // A is invalid, push to end
+            if (!bHasValidCoords) return -1; // B is invalid, push to end
 
             const distA = calculateDistance(
               userLat,
@@ -260,42 +281,58 @@ export class MatchingService {
             return distA - distB;
           });
         }
-        return listings; // No user location, return original order
+        // If no valid user location for distance sorting, default to relevance or no specific order
+        console.warn("[MatchingService] No valid user location for 'distance' sorting. Falling back to relevance or natural order.");
+        // Fallback to relevance if user object is present, otherwise just return as is
+        return user ? sorted.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)) : sorted;
       case "price-asc":
-        return [...listings].sort((a, b) => a.price - b.price);
+        return sorted.sort((a, b) => a.price - b.price);
       case "price-desc":
-        return [...listings].sort((a, b) => b.price - a.price);
+        return sorted.sort((a, b) => b.price - a.price);
       case "newest":
-        return [...listings].sort((a, b) => {
+        // Sort by creation date, newest first
+        return sorted.sort((a, b) => {
           const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
           const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
           return timeB - timeA;
         });
       default:
-        return listings;
+        // Default sort: perhaps by relevance if user is available, otherwise by creation date or just current order
+        console.warn(`[MatchingService] Unknown sort option: ${sortBy}. Falling back to relevance or natural order.`);
+        return user ? sorted.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)) : sorted;
     }
   }
 
   /**
-   * Get personalized recommendations for a user
+   * Get personalized recommendations for a user.
+   * Filters by user criteria, then sorts by combined relevance and match score.
    */
   static getRecommendations(user: User, allListings: Listing[], limit: number = 10): Listing[] {
     if (!user || !Array.isArray(allListings)) {
       return [];
     }
 
-    // First filter listings that are suitable for the user
+    // Step 1: Filter listings that meet user's hard matching criteria
     const filteredListings = this.filterListingsForUser(user, allListings);
+
+    // Step 2: Ensure match and relevance scores are calculated for each listing
+    // This assumes these scores are not persistent in the DB and need re-calculation per user session
+    const listingsWithScores = filteredListings.map(listing => ({
+      ...listing,
+      matchScore: this.calculateMatchScore(user, listing),
+      relevanceScore: this.calculateRelevanceScore(user, listing)
+    }));
     
-    // Then sort by combined relevance and match score
-    const sortedListings = this.sortListings(filteredListings, 'relevance', user);
+    // Step 3: Sort by a combined score (e.g., relevance first, then match)
+    // The 'relevance' sort case in sortListings implicitly handles this
+    const sortedListings = this.sortListings(listingsWithScores, 'relevance', user);
     
-    // Return top recommendations
+    // Step 4: Return top N recommendations
     return sortedListings.slice(0, Math.max(0, limit));
   }
 
   /**
-   * Find potential roommate matches
+   * Find potential roommate matches based on shared university and preferences.
    */
   static findRoommateMatches(user: User, allUsers: User[]): User[] {
     if (!user || !Array.isArray(allUsers)) {
@@ -304,23 +341,46 @@ export class MatchingService {
 
     return allUsers
       .filter(otherUser => {
+        // Exclude self and invalid users
         if (!otherUser || otherUser.id === user.id) return false;
         
-        // Same university
+        // Match by same university (strong criterion)
         if (otherUser.university !== user.university) return false;
         
-        // Similar preferences
+        // Match by similar preferences (if user preferences are available)
         if (user.preferences && otherUser.preferences) {
           const lifestyleMatch = 
             user.preferences.smokingAllowed === otherUser.preferences.smokingAllowed &&
-            user.preferences.studyFriendly === otherUser.preferences.studyFriendly;
+            user.preferences.petsAllowed === otherUser.preferences.petsAllowed && // Added pets for lifestyle
+            user.preferences.studyFriendly === otherUser.preferences.studyFriendly &&
+            user.preferences.socialLevel === otherUser.preferences.socialLevel; // Added social level for lifestyle
           
           if (!lifestyleMatch) return false;
+
+          // Optional: Match by preferred room types intersection (e.g., at least one common preferred type)
+          if (user.preferences.preferredRoomTypes?.length && otherUser.preferences.preferredRoomTypes?.length) {
+            const hasCommonRoomType = user.preferences.preferredRoomTypes.some(type =>
+              otherUser.preferences?.preferredRoomTypes?.includes(type)
+            );
+            if (!hasCommonRoomType) return false;
+          }
+
+          // Optional: Match by preferred amenities intersection
+          if (user.preferences.preferredAmenities?.length && otherUser.preferences.preferredAmenities?.length) {
+            const hasCommonAmenity = user.preferences.preferredAmenities.some(amenity =>
+              otherUser.preferences?.preferredAmenities?.includes(amenity)
+            );
+            // This could be weighted, but for a boolean filter, simply having one common is enough
+            if (!hasCommonAmenity) return false;
+          }
         }
         
-        return true;
+        // Consider filtering by year proximity here if 'similarYear' preference is implemented for roommates
+        // For simplicity, currently just checks preferences commonalities
+
+        return true; // Passed all roommate matching criteria
       })
-      .slice(0, 20); // Limit to top 20 matches
+      .slice(0, 20); // Limit to top 20 matches for performance and relevance
   }
 }
 

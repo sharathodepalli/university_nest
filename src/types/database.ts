@@ -14,6 +14,9 @@ export interface Database {
           preferences: any;
           created_at: string;
           updated_at: string;
+          email?: string | null;
+          location: any | null;
+          matchingPreferences: any | null; // ADDED THIS LINE
         };
         Insert: {
           id: string;
@@ -27,6 +30,9 @@ export interface Database {
           preferences?: any;
           created_at?: string;
           updated_at?: string;
+          email?: string | null;
+          location?: any | null;
+          matchingPreferences?: any | null; // ADDED THIS LINE
         };
         Update: {
           id?: string;
@@ -40,6 +46,9 @@ export interface Database {
           preferences?: any;
           created_at?: string;
           updated_at?: string;
+          email?: string | null;
+          location?: any | null;
+          matchingPreferences?: any | null; // ADDED THIS LINE
         };
       };
       listings: {

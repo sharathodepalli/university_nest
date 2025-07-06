@@ -448,16 +448,18 @@ const CreateListingPage: React.FC = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {amenityOptions.map((amenity) => (
                   <label
-                    key={amenity}
+                    key={amenity.value}
                     className="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
                   >
                     <input
                       type="checkbox"
-                      checked={selectedAmenities.includes(amenity)}
-                      onChange={() => handleAmenityToggle(amenity)}
+                      checked={selectedAmenities.includes(amenity.value)}
+                      onChange={() => handleAmenityToggle(amenity.value)}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <span className="text-sm text-gray-700">{amenity}</span>
+                    <span className="text-sm text-gray-700">
+                      {amenity.label}
+                    </span>
                   </label>
                 ))}
               </div>

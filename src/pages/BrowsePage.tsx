@@ -434,16 +434,18 @@ const BrowsePage: React.FC = () => {
                 <div className="space-y-2">
                   {amenityOptions.map((amenity) => (
                     <label
-                      key={amenity}
+                      key={amenity.value}
                       className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer"
                     >
                       <input
                         type="checkbox"
-                        checked={filters.amenities?.includes(amenity) || false}
-                        onChange={() => handleAmenityQuickFilter(amenity)}
+                        checked={
+                          filters.amenities?.includes(amenity.value) || false
+                        }
+                        onChange={() => handleAmenityQuickFilter(amenity.value)}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span>{amenity}</span>
+                      <span>{amenity.label}</span>
                     </label>
                   ))}
                 </div>

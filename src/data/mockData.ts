@@ -22,7 +22,14 @@ export const mockUsers: User[] = [
       preferredRoomTypes: ['single', 'studio'],
       preferredAmenities: ['Wi-Fi', 'Laundry', 'Kitchen']
     },
-    location: RealAddressService.REAL_UNIVERSITIES['University of California, Berkeley'],
+    // CORRECTED: Explicitly map RealAddress to User.location interface
+    location: {
+      address: RealAddressService.REAL_UNIVERSITIES['University of California, Berkeley'].formattedAddress,
+      city: RealAddressService.REAL_UNIVERSITIES['University of California, Berkeley'].city,
+      state: RealAddressService.REAL_UNIVERSITIES['University of California, Berkeley'].state,
+      country: RealAddressService.REAL_UNIVERSITIES['University of California, Berkeley'].country,
+      coordinates: RealAddressService.REAL_UNIVERSITIES['University of California, Berkeley'].coordinates
+    },
     matchingPreferences: {
       maxDistance: 15,
       sameUniversity: true,
@@ -52,7 +59,9 @@ export const mockUsers: User[] = [
       preferredRoomTypes: ['shared', 'apartment'],
       preferredAmenities: ['Wi-Fi', 'Kitchen', 'Parking', 'Gym Access']
     },
+    // CORRECTED: Added 'address' property
     location: {
+      address: '450 Jane Stanford Way, Stanford, CA 94305, USA', // Example address for mock user
       city: 'Palo Alto',
       state: 'California',
       country: 'USA',
@@ -90,7 +99,9 @@ export const mockUsers: User[] = [
       preferredRoomTypes: ['single'],
       preferredAmenities: ['Wi-Fi', 'Study Space', 'Common Area']
     },
+    // CORRECTED: Added 'address' property
     location: {
+      address: '405 Hilgard Ave, Los Angeles, CA 90024, USA', // Example address for mock user
       city: 'Los Angeles',
       state: 'California',
       country: 'USA',
@@ -124,7 +135,6 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 37.8688,
       longitude: -122.2595,
-      // CORRECTED: nearbyUniversities now an array of objects
       nearbyUniversities: [{ name: 'University of California, Berkeley', distance: 0.2 }, { name: 'Berkeley City College', distance: 0.8 }],
     },
     roomType: 'studio',
@@ -171,7 +181,6 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 37.4419,
       longitude: -122.1430,
-      // CORRECTED: nearbyUniversities now an array of objects
       nearbyUniversities: [{ name: 'Stanford University', distance: 0.5 }],
     },
     roomType: 'shared',
@@ -218,7 +227,6 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 34.0619,
       longitude: -118.4473,
-      // CORRECTED: nearbyUniversities now an array of objects
       nearbyUniversities: [{ name: 'UCLA', distance: 0.7 }, { name: 'Santa Monica College', distance: 4.0 }],
     },
     roomType: 'single',
@@ -265,7 +273,6 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 37.7749,
       longitude: -122.4194,
-      // CORRECTED: nearbyUniversities now an array of objects
       nearbyUniversities: [
         { name: 'UC San Francisco', distance: 1.5 },
         { name: 'University of San Francisco', distance: 2.0 },
@@ -315,7 +322,6 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 37.8697,
       longitude: -122.2601,
-      // CORRECTED: nearbyUniversities now an array of objects
       nearbyUniversities: [{ name: 'University of California, Berkeley', distance: 0.3 }],
     },
     roomType: 'studio',
@@ -361,7 +367,6 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 37.4275,
       longitude: -122.1697,
-      // CORRECTED: nearbyUniversities now an array of objects
       nearbyUniversities: [{ name: 'Stanford University', distance: 0.1 }],
     },
     roomType: 'shared',
@@ -407,7 +412,6 @@ export const mockListings: Listing[] = [
       country: 'USA',
       latitude: 39.1293,
       longitude: -84.5184,
-      // CORRECTED: nearbyUniversities now an array of objects
       nearbyUniversities: [{ name: 'University of Cincinnati', distance: 0.4 }],
     },
     roomType: 'apartment',

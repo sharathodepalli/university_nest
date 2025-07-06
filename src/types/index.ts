@@ -1,4 +1,3 @@
-// types/index.ts (Verify this file is correct)
 export interface User {
   id: string;
   name: string;
@@ -20,6 +19,7 @@ export interface User {
     preferredAmenities?: string[];
   };
   location?: {
+    address: string; // ADDED THIS LINE
     city: string;
     state: string;
     country: string;
@@ -89,12 +89,12 @@ export interface SearchFilters {
   query?: string;
   location?: string;
   university?: string | { custom: string };
-  maxDistance?: number; // This was added
+  maxDistance?: number;
   priceRange?: { min?: number; max?: number };
   roomType?: string[];
   amenities?: string[];
-  moveInDate?: string; // This was added
-  availableFrom?: Date; // Ensure this is Date type
+  moveInDate?: string;
+  availableFrom?: Date;
   sortBy?: 'relevance' | 'price' | 'date';
 }
 
