@@ -43,8 +43,8 @@ const ListingCard: React.FC<ListingCardProps> = ({
       : null;
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
+    e.stopPropagation(); // Prevent card click event
+    e.preventDefault(); // Prevent default button behavior (e.g., form submission)
     toggleFavorite(listing.id);
   };
 
@@ -67,7 +67,7 @@ const ListingCard: React.FC<ListingCardProps> = ({
   const primaryImage = images[0];
 
   const safeTitle = sanitizeHtml(listing.title || "Untitled Listing");
-  const price = typeof listing.price === "number" ? listing.price : 0; // CORRECTED: Changed 'price' to 'listing.price'
+  const price = typeof listing.price === "number" ? listing.price : 0;
   const roomTypeDisplay = listing.roomType
     ? listing.roomType.charAt(0).toUpperCase() + listing.roomType.slice(1)
     : "Room";
@@ -122,13 +122,13 @@ const ListingCard: React.FC<ListingCardProps> = ({
 
   // Prioritize user's actual location if available and valid
   if (
-    user?.location?.coordinates?.lat &&
-    user?.location?.coordinates?.lng &&
+    user?.location?.coordinates?.lat !== undefined &&
+    user?.location?.coordinates?.lng !== undefined &&
     (user.location.coordinates.lat !== 0 ||
-      user.location.coordinates.lng !== 0) &&
-    listing.location?.latitude &&
-    listing.location?.longitude &&
-    (listing.location.latitude !== 0 || listing.location.longitude !== 0)
+      user.location.coordinates.lng !== 0) && // Ensure user coords are not 0,0
+    typeof listing.location?.latitude === "number" &&
+    typeof listing.location?.longitude === "number" &&
+    (listing.location.latitude !== 0 || listing.location.longitude !== 0) // Ensure listing coords are not 0,0
   ) {
     const userLat = user.location.coordinates.lat;
     const userLng = user.location.coordinates.lng;
@@ -142,10 +142,10 @@ const ListingCard: React.FC<ListingCardProps> = ({
       listingLng
     );
     distanceToDisplay = formatDistance(distance);
-    distanceLabel = `from you`;
+    distanceLabel = `from you`; // More personal for the logged-in user
     distanceIcon = (
       <MapPin className="w-4 h-4 mr-2 text-blue-500 flex-shrink-0" />
-    );
+    ); // Highlight personalized distance
   } else if (nearestUniversityInfo) {
     // Fallback to nearest university to the listing if user location is not valid
     distanceToDisplay = formatDistance(nearestUniversityInfo.distance);
@@ -154,6 +154,7 @@ const ListingCard: React.FC<ListingCardProps> = ({
       <UniversityIcon className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
     );
   }
+  // If neither user location nor nearby university info, distanceToDisplay remains empty and only cityState is shown
 
   return (
     <div

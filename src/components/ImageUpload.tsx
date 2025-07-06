@@ -522,7 +522,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500 z-10"
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 focus:opacity-100 focus:ring-2 focus:ring-red-500 z-10"
                     aria-label={`Remove image ${index + 1}`}
                   >
                     <X className="w-4 h-4" />

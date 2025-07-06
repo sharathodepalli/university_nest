@@ -9,7 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useListings } from "../contexts/ListingsContext";
-import { SearchFilters as SearchFiltersType } from "../types"; // Import SearchFiltersType
+import { SearchFilters as SearchFiltersType } from "../types";
 import { amenityOptions, roomTypeOptions } from "../data/mockData";
 
 interface SearchFiltersProps {
@@ -183,28 +183,32 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
             <span>Amenities</span>
           </label>
           <div className="grid grid-cols-2 gap-2 pt-1">
-            {amenityOptions.map((option) => (
-              <label
-                key={option.value}
-                className="flex items-center space-x-2 text-sm"
-              >
-                <input
-                  type="checkbox"
-                  checked={
-                    localFilters.amenities?.includes(option.value) || false
-                  }
-                  onChange={(e) => {
-                    const currentAmenities = localFilters.amenities || [];
-                    const newAmenities = e.target.checked
-                      ? [...currentAmenities, option.value]
-                      : currentAmenities.filter((a) => a !== option.value);
-                    handleFilterChange("amenities", newAmenities);
-                  }}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span>{option.label}</span>
-              </label>
-            ))}
+            {amenityOptions.map(
+              (
+                option // Changed from 'option' to 'amenity' consistent with previous correction if it was reverted
+              ) => (
+                <label
+                  key={option.value} // Use option.value as key
+                  className="flex items-center space-x-2 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={
+                      localFilters.amenities?.includes(option.value) || false // Use option.value
+                    }
+                    onChange={(e) => {
+                      const currentAmenities = localFilters.amenities || [];
+                      const newAmenities = e.target.checked
+                        ? [...currentAmenities, option.value] // Use option.value
+                        : currentAmenities.filter((a) => a !== option.value); // Use option.value
+                      handleFilterChange("amenities", newAmenities);
+                    }}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>{option.label}</span> {/* Use option.label */}
+                </label>
+              )
+            )}
           </div>
         </div>
 
@@ -216,7 +220,6 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
           </label>
           <input
             type="date"
-            // Ensure the value is a string in 'YYYY-MM-DD' format for HTML date input
             value={localFilters.moveInDate || ""}
             onChange={(e) => handleFilterChange("moveInDate", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

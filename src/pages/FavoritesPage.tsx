@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
-import { Heart, Grid, List, Search } from 'lucide-react';
-import { useListings } from '../contexts/ListingsContext';
-import ListingCard from '../components/ListingCard';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { Heart, Grid, List, Search } from "lucide-react";
+import { useListings } from "../contexts/ListingsContext";
+import ListingCard from "../components/ListingCard";
+import { useNavigate } from "react-router-dom";
 
 const FavoritesPage: React.FC = () => {
   const { listings, favoriteListings } = useListings();
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const favoriteListingsData = listings.filter(listing => 
+  const favoriteListingsData = listings.filter((listing) =>
     favoriteListings.includes(listing.id)
   );
 
-  const filteredFavorites = favoriteListingsData.filter(listing =>
-    listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    listing.location.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    listing.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredFavorites = favoriteListingsData.filter(
+    (listing) =>
+      listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      listing.location.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      listing.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -32,7 +33,8 @@ const FavoritesPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900">My Favorites</h1>
           </div>
           <p className="text-gray-600">
-            {favoriteListingsData.length} saved listing{favoriteListingsData.length !== 1 ? 's' : ''}
+            {favoriteListingsData.length} saved listing
+            {favoriteListingsData.length !== 1 ? "s" : ""}
           </p>
         </div>
 
@@ -45,10 +47,10 @@ const FavoritesPage: React.FC = () => {
               No favorites yet
             </h3>
             <p className="text-gray-600 mb-6">
-              Start browsing listings and save your favorites to see them here
+              Start Browse listings and save your favorites to see them here
             </p>
             <button
-              onClick={() => navigate('/browse')}
+              onClick={() => navigate("/browse")}
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Browse Listings
@@ -66,29 +68,32 @@ const FavoritesPage: React.FC = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  aria-label="Search favorites"
                 />
               </div>
-              
+
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">View:</span>
                   <button
-                    onClick={() => setViewMode('grid')}
+                    onClick={() => setViewMode("grid")}
                     className={`p-2 rounded-lg transition-colors ${
-                      viewMode === 'grid'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                      viewMode === "grid"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-gray-600 hover:bg-gray-50"
                     }`}
+                    aria-label="Grid view"
                   >
                     <Grid className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => setViewMode('list')}
+                    onClick={() => setViewMode("list")}
                     className={`p-2 rounded-lg transition-colors ${
-                      viewMode === 'list'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                      viewMode === "list"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-gray-600 hover:bg-gray-50"
                     }`}
+                    aria-label="List view"
                   >
                     <List className="w-4 h-4" />
                   </button>
@@ -103,16 +108,16 @@ const FavoritesPage: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
                   No favorites match your search
                 </h3>
-                <p className="text-gray-600">
-                  Try adjusting your search terms
-                </p>
+                <p className="text-gray-600">Try adjusting your search terms</p>
               </div>
             ) : (
-              <div className={`grid gap-6 ${
-                viewMode === 'grid' 
-                  ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
-                  : 'grid-cols-1'
-              }`}>
+              <div
+                className={`grid gap-6 ${
+                  viewMode === "grid"
+                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+                    : "grid-cols-1"
+                }`}
+              >
                 {filteredFavorites.map((listing) => (
                   <ListingCard
                     key={listing.id}

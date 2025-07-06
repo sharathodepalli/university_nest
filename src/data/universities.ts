@@ -96,12 +96,17 @@ export const getNearbyUniversities = (
   center: { lat: number; lng: number },
   radiusMiles: number = 50
 ): { name: string; distance: number }[] => {
-  if (center.lat === undefined || center.lng === undefined) {
-    return [];
+  // Ensure center coordinates are valid before attempting calculation
+  if (center.lat === undefined || center.lng === undefined || (center.lat === 0 && center.lng === 0)) {
+    return []; // Return empty array if center is invalid/0,0
   }
 
   return universityData
     .map(uni => {
+      // Ensure university coordinates are valid before calculating distance
+      if (uni.coordinates.lat === undefined || uni.coordinates.lng === undefined || (uni.coordinates.lat === 0 && uni.coordinates.lng === 0)) {
+        return { name: uni.name, distance: Infinity }; // Treat as infinitely far if uni coords are invalid
+      }
       const distance = calculateDistance(
         center.lat,
         center.lng,

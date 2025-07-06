@@ -1,7 +1,18 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, PlusCircle, MessageCircle, User, LogOut, Heart, Menu, X, AlertCircle } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  Home,
+  Search,
+  PlusCircle,
+  MessageCircle,
+  User,
+  LogOut,
+  Heart,
+  Menu,
+  X,
+  AlertCircle,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 const Header: React.FC = () => {
   const { user, logout, isSupabaseReady } = useAuth();
@@ -11,11 +22,11 @@ const Header: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
 
   const navItems = [
-    { path: '/', label: 'Home', icon: Home },
-    { path: '/browse', label: 'Browse', icon: Search },
-    { path: '/create', label: 'Post Room', icon: PlusCircle },
-    { path: '/messages', label: 'Messages', icon: MessageCircle },
-    { path: '/favorites', label: 'Favorites', icon: Heart },
+    { path: "/", label: "Home", icon: Home },
+    { path: "/browse", label: "Browse", icon: Search },
+    { path: "/create", label: "Post Room", icon: PlusCircle },
+    { path: "/messages", label: "Messages", icon: MessageCircle },
+    { path: "/favorites", label: "Favorites", icon: Heart },
   ];
 
   return (
@@ -25,7 +36,10 @@ const Header: React.FC = () => {
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2">
           <div className="max-w-7xl mx-auto flex items-center justify-center space-x-2 text-sm text-yellow-800">
             <AlertCircle className="w-4 h-4" />
-            <span>Development Mode: Using mock data. Connect to Supabase for full functionality.</span>
+            <span>
+              Development Mode: Using mock data. Connect to Supabase for full
+              functionality.
+            </span>
           </div>
         </div>
       )}
@@ -51,8 +65,8 @@ const Header: React.FC = () => {
                     to={item.path}
                     className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors ${
                       isActive(item.path)
-                        ? 'text-blue-600 bg-blue-50'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        ? "text-blue-600 bg-blue-50"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -128,8 +142,8 @@ const Header: React.FC = () => {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                         isActive(item.path)
-                          ? 'text-blue-600 bg-blue-50'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                          ? "text-blue-600 bg-blue-50"
+                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                       }`}
                     >
                       <Icon className="w-4 h-4" />

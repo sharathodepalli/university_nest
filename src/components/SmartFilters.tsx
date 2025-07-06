@@ -1,25 +1,35 @@
-import React, { useState } from 'react';
-import { Filter, X, MapPin, DollarSign, Home, Calendar, Users, Settings, Target, CaseSensitive as University } from 'lucide-react';
-import { useListings } from '../contexts/ListingsContext';
-import { useAuth } from '../contexts/AuthContext';
-import { SearchFilters as SearchFiltersType } from '../types';
-import { amenityOptions, roomTypeOptions } from '../data/mockData';
-import { universityData } from '../data/universities';
+import React, { useState } from "react";
+import {
+  Filter,
+  X,
+  MapPin,
+  DollarSign,
+  Home,
+  Calendar,
+  Settings,
+  Target,
+  CaseSensitive as UniversityIcon,
+} from "lucide-react"; // Removed Users import
+import { useListings } from "../contexts/ListingsContext";
+import { useAuth } from "../contexts/AuthContext";
+import { SearchFilters as SearchFiltersType } from "../types";
+import { amenityOptions, roomTypeOptions } from "../data/mockData";
+import { universityData } from "../data/universities";
 
 interface SmartFiltersProps {
   className?: string;
 }
 
-const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
+const SmartFilters: React.FC<SmartFiltersProps> = ({ className = "" }) => {
   const { user } = useAuth();
   const { filters, setFilters, sortBy, setSortBy } = useListings();
   const [isOpen, setIsOpen] = useState(false);
   const [localFilters, setLocalFilters] = useState<SearchFiltersType>(filters);
 
   const handleFilterChange = (key: keyof SearchFiltersType, value: any) => {
-    setLocalFilters(prev => ({
+    setLocalFilters((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
@@ -34,24 +44,24 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
     setFilters(emptyFilters);
   };
 
-  const applySmartFilters = (type: 'budget' | 'university' | 'nearby') => {
+  const applySmartFilters = (type: "budget" | "university" | "nearby") => {
     let smartFilters: SearchFiltersType = { ...localFilters };
 
     switch (type) {
-      case 'budget':
+      case "budget":
         if (user?.preferences?.maxBudget) {
           smartFilters.priceRange = {
             min: 0,
-            max: user.preferences.maxBudget
+            max: user.preferences.maxBudget,
           };
         }
         break;
-      case 'university':
+      case "university":
         if (user?.university) {
           smartFilters.university = user.university;
         }
         break;
-      case 'nearby':
+      case "nearby":
         if (user?.matchingPreferences?.maxDistance) {
           smartFilters.maxDistance = user.matchingPreferences.maxDistance;
         } else {
@@ -65,16 +75,22 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
     setIsOpen(false);
   };
 
-  const hasActiveFilters = Object.keys(filters).some(key => {
+  const hasActiveFilters = Object.keys(filters).some((key) => {
     const value = filters[key as keyof SearchFiltersType];
-    return value !== undefined && value !== null && 
-           (Array.isArray(value) ? value.length > 0 : true);
+    return (
+      value !== undefined &&
+      value !== null &&
+      (Array.isArray(value) ? value.length > 0 : true)
+    );
   });
 
-  const activeFilterCount = Object.keys(filters).filter(key => {
+  const activeFilterCount = Object.keys(filters).filter((key) => {
     const value = filters[key as keyof SearchFiltersType];
-    return value !== undefined && value !== null && 
-           (Array.isArray(value) ? value.length > 0 : true);
+    return (
+      value !== undefined &&
+      value !== null &&
+      (Array.isArray(value) ? value.length > 0 : true)
+    );
   }).length;
 
   return (
@@ -85,24 +101,24 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
         {user && (
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => applySmartFilters('university')}
+              onClick={() => applySmartFilters("university")}
               className="flex items-center space-x-1 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
             >
-              <University className="w-4 h-4" />
+              <UniversityIcon className="w-4 h-4" />
               <span>My University</span>
             </button>
-            
+
             <button
-              onClick={() => applySmartFilters('nearby')}
+              onClick={() => applySmartFilters("nearby")}
               className="flex items-center space-x-1 px-3 py-2 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
             >
               <Target className="w-4 h-4" />
               <span>Nearby</span>
             </button>
-            
+
             {user.preferences?.maxBudget && (
               <button
-                onClick={() => applySmartFilters('budget')}
+                onClick={() => applySmartFilters("budget")}
                 className="flex items-center space-x-1 px-3 py-2 text-sm bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors"
               >
                 <DollarSign className="w-4 h-4" />
@@ -117,8 +133,8 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
           onClick={() => setIsOpen(!isOpen)}
           className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-all duration-200 ${
             hasActiveFilters
-              ? 'bg-blue-50 border-blue-200 text-blue-700'
-              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+              ? "bg-blue-50 border-blue-200 text-blue-700"
+              : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
           }`}
         >
           <Filter className="w-4 h-4" />
@@ -138,7 +154,10 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
         >
           <option value="relevance">Best Match</option>
           <option value="match">Compatibility</option>
-          <option value="price">Price: Low to High</option>
+          <option value="price-asc">Price: Low to High</option>{" "}
+          {/* Corrected value */}
+          <option value="price-desc">Price: High to Low</option>{" "}
+          {/* Corrected value */}
           <option value="distance">Distance</option>
           <option value="newest">Newest First</option>
         </select>
@@ -148,7 +167,9 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
       {isOpen && (
         <div className="absolute top-12 left-0 w-96 bg-white rounded-xl shadow-xl border border-gray-200 p-6 z-50">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Advanced Filters</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Advanced Filters
+            </h3>
             <button
               onClick={() => setIsOpen(false)}
               className="p-1 hover:bg-gray-100 rounded-full"
@@ -168,19 +189,30 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
                 <input
                   type="text"
                   placeholder="City or Area"
-                  value={localFilters.location || ''}
-                  onChange={(e) => handleFilterChange('location', e.target.value)}
+                  value={localFilters.location || ""}
+                  onChange={(e) =>
+                    handleFilterChange("location", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                
+
                 <select
-                  value={localFilters.university || ''}
-                  onChange={(e) => handleFilterChange('university', e.target.value)}
+                  // CORRECTED: Conditionally set value based on type of localFilters.university
+                  value={
+                    typeof localFilters.university === "object"
+                      ? localFilters.university.custom
+                      : localFilters.university || ""
+                  }
+                  onChange={(e) =>
+                    handleFilterChange("university", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Any University</option>
-                  {universityData.map(uni => (
-                    <option key={uni.id} value={uni.name}>{uni.name}</option>
+                  {universityData.map((uni) => (
+                    <option key={uni.id} value={uni.name}>
+                      {uni.name}
+                    </option>
                   ))}
                 </select>
 
@@ -193,7 +225,9 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
                     min="1"
                     max="100"
                     value={localFilters.maxDistance || 25}
-                    onChange={(e) => handleFilterChange('maxDistance', Number(e.target.value))}
+                    onChange={(e) =>
+                      handleFilterChange("maxDistance", Number(e.target.value))
+                    }
                     className="w-full"
                   />
                 </div>
@@ -210,21 +244,25 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
                 <input
                   type="number"
                   placeholder="Min"
-                  value={localFilters.priceRange?.min || ''}
-                  onChange={(e) => handleFilterChange('priceRange', {
-                    ...localFilters.priceRange,
-                    min: Number(e.target.value)
-                  })}
+                  value={localFilters.priceRange?.min || ""}
+                  onChange={(e) =>
+                    handleFilterChange("priceRange", {
+                      ...localFilters.priceRange,
+                      min: Number(e.target.value),
+                    })
+                  }
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <input
                   type="number"
                   placeholder="Max"
-                  value={localFilters.priceRange?.max || ''}
-                  onChange={(e) => handleFilterChange('priceRange', {
-                    ...localFilters.priceRange,
-                    max: Number(e.target.value)
-                  })}
+                  value={localFilters.priceRange?.max || ""}
+                  onChange={(e) =>
+                    handleFilterChange("priceRange", {
+                      ...localFilters.priceRange,
+                      max: Number(e.target.value),
+                    })
+                  }
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -238,21 +276,34 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
               </label>
               <div className="space-y-2">
                 {roomTypeOptions.map((option) => (
-                  <label key={option.value} className="flex items-center space-x-2">
+                  <label
+                    key={option.value}
+                    className="flex items-center space-x-2"
+                  >
                     <input
                       type="checkbox"
-                      checked={localFilters.roomType?.includes(option.value) || false}
+                      checked={
+                        localFilters.roomType?.includes(option.value) || false
+                      }
                       onChange={(e) => {
                         const currentTypes = localFilters.roomType || [];
                         if (e.target.checked) {
-                          handleFilterChange('roomType', [...currentTypes, option.value]);
+                          handleFilterChange("roomType", [
+                            ...currentTypes,
+                            option.value,
+                          ]);
                         } else {
-                          handleFilterChange('roomType', currentTypes.filter(t => t !== option.value));
+                          handleFilterChange(
+                            "roomType",
+                            currentTypes.filter((t) => t !== option.value)
+                          );
                         }
                       }}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <span className="text-sm text-gray-700">{option.label}</span>
+                    <span className="text-sm text-gray-700">
+                      {option.label}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -265,24 +316,45 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
                 <span>Amenities</span>
               </label>
               <div className="max-h-32 overflow-y-auto space-y-2">
-                {amenityOptions.map((amenity) => (
-                  <label key={amenity} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={localFilters.amenities?.includes(amenity) || false}
-                      onChange={(e) => {
-                        const currentAmenities = localFilters.amenities || [];
-                        if (e.target.checked) {
-                          handleFilterChange('amenities', [...currentAmenities, amenity]);
-                        } else {
-                          handleFilterChange('amenities', currentAmenities.filter(a => a !== amenity));
-                        }
-                      }}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">{amenity}</span>
-                  </label>
-                ))}
+                {amenityOptions.map(
+                  (
+                    option // Changed from 'amenity' to 'option' for consistency with type
+                  ) => (
+                    <label
+                      key={option.value}
+                      className="flex items-center space-x-2"
+                    >
+                      {" "}
+                      {/* Use option.value */}
+                      <input
+                        type="checkbox"
+                        checked={
+                          localFilters.amenities?.includes(option.value) ||
+                          false
+                        } // Use option.value
+                        onChange={(e) => {
+                          const currentAmenities = localFilters.amenities || [];
+                          if (e.target.checked) {
+                            handleFilterChange("amenities", [
+                              ...currentAmenities,
+                              option.value,
+                            ]); // Use option.value
+                          } else {
+                            handleFilterChange(
+                              "amenities",
+                              currentAmenities.filter((a) => a !== option.value)
+                            ); // Use option.value
+                          }
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">
+                        {option.label}
+                      </span>{" "}
+                      {/* Use option.label */}
+                    </label>
+                  )
+                )}
               </div>
             </div>
 
@@ -294,8 +366,34 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = '' }) => {
               </label>
               <input
                 type="date"
-                value={localFilters.availableFrom ? new Date(localFilters.availableFrom).toISOString().split('T')[0] : ''}
-                onChange={(e) => handleFilterChange('availableFrom', e.target.value ? new Date(e.target.value) : undefined)}
+                // The value for type="date" must be YYYY-MM-DD
+                value={
+                  localFilters.availableFrom instanceof Date
+                    ? localFilters.availableFrom.toISOString().split("T")[0]
+                    : ""
+                }
+                onChange={(e) =>
+                  handleFilterChange(
+                    "availableFrom",
+                    e.target.value ? new Date(e.target.value) : undefined
+                  )
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Move-in Date */}
+            <div>
+              <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                <Calendar className="w-4 h-4" />
+                <span>Move-in Date</span>
+              </label>
+              <input
+                type="date"
+                value={localFilters.moveInDate || ""}
+                onChange={(e) =>
+                  handleFilterChange("moveInDate", e.target.value)
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>

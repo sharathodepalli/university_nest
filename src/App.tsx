@@ -20,6 +20,8 @@ import MessagesPage from "./pages/MessagesPage";
 import FavoritesPage from "./pages/FavoritesPage";
 import ProfilePage from "./pages/ProfilePage";
 import RealTimeTest from "./components/RealTimeTest";
+import UpdatePasswordPage from "./pages/UpdatePasswordPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -111,6 +113,26 @@ const AppContent: React.FC = () => {
                 <PublicRoute>
                   <ErrorBoundary>
                     <AuthPage />
+                  </ErrorBoundary>
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicRoute>
+                  <ErrorBoundary>
+                    <ForgotPasswordPage />
+                  </ErrorBoundary>
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/update-password"
+              element={
+                <PublicRoute>
+                  <ErrorBoundary>
+                    <UpdatePasswordPage />
                   </ErrorBoundary>
                 </PublicRoute>
               }

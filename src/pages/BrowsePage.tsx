@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import ListingCard from "../components/ListingCard";
 import SkeletonCard from "../components/SkeletonCard";
-import SearchFilters from "../components/SearchFilters";
+import SearchFilters from "../components/SearchFilters"; // Import the SearchFilters component
 import { useAuth } from "../contexts/AuthContext";
 import { errorHandler } from "../lib/errorHandler";
 import { useListings } from "../contexts/ListingsContext";
@@ -16,7 +16,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { amenityOptions, roomTypeOptions } from "../data/mockData"; //
+import { amenityOptions, roomTypeOptions } from "../data/mockData";
 import { SearchFilters as SearchFiltersType } from "../types";
 
 const BrowsePage: React.FC = () => {
@@ -81,7 +81,7 @@ const BrowsePage: React.FC = () => {
 
   const handlePriceRangeQuickFilter = (min: number, max: number) => {
     handleQuickFilterChange("priceRange", { min, max });
-    setOpenQuickFilter(null);
+    setOpenQuickFilter(null); // Close after selection
   };
 
   const handleRoomTypeQuickFilter = (type: string) => {
@@ -93,6 +93,7 @@ const BrowsePage: React.FC = () => {
       "roomType",
       newTypes.length > 0 ? newTypes : undefined
     );
+    // Do not close immediately, allow multiple selections
   };
 
   const handleAmenityQuickFilter = (amenity: string) => {
@@ -104,6 +105,7 @@ const BrowsePage: React.FC = () => {
       "amenities",
       newAmenities.length > 0 ? newAmenities : undefined
     );
+    // Do not close immediately, allow multiple selections
   };
 
   useEffect(() => {
@@ -181,6 +183,7 @@ const BrowsePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             {user
@@ -194,6 +197,7 @@ const BrowsePage: React.FC = () => {
           </p>
         </div>
 
+        {/* Smart Recommendations Toggle */}
         {user && recommendedListings.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center space-x-4">
@@ -376,30 +380,22 @@ const BrowsePage: React.FC = () => {
                   Select Room Types
                 </h4>
                 <div className="space-y-2">
-                  {roomTypeOptions.map(
-                    (
-                      option //
-                    ) => (
-                      <label
-                        key={option.value}
-                        className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer"
-                      >
-                        {" "}
-                        {/* */}
-                        <input
-                          type="checkbox"
-                          checked={
-                            filters.roomType?.includes(option.value) || false
-                          } //
-                          onChange={() =>
-                            handleRoomTypeQuickFilter(option.value)
-                          } //
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span>{option.label}</span> {/* */}
-                      </label>
-                    )
-                  )}
+                  {roomTypeOptions.map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={
+                          filters.roomType?.includes(option.value) || false
+                        }
+                        onChange={() => handleRoomTypeQuickFilter(option.value)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
             )}
@@ -432,22 +428,28 @@ const BrowsePage: React.FC = () => {
                   Select Amenities
                 </h4>
                 <div className="space-y-2">
-                  {amenityOptions.map((amenity) => (
-                    <label
-                      key={amenity.value}
-                      className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={
-                          filters.amenities?.includes(amenity.value) || false
-                        }
-                        onChange={() => handleAmenityQuickFilter(amenity.value)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span>{amenity.label}</span>
-                    </label>
-                  ))}
+                  {amenityOptions.map(
+                    (
+                      option // Correctly map 'option' which is an object
+                    ) => (
+                      <label
+                        key={option.value}
+                        className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={
+                            filters.amenities?.includes(option.value) || false
+                          }
+                          onChange={() =>
+                            handleAmenityQuickFilter(option.value)
+                          } // Pass option.value
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span>{option.label}</span> {/* Display option.label */}
+                      </label>
+                    )
+                  )}
                 </div>
               </div>
             )}

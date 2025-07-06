@@ -1,33 +1,33 @@
-import React, { useState } from 'react';
-import { Search, MapPin, Calendar, Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useListings } from '../contexts/ListingsContext';
+import React, { useState } from "react";
+import { Search, MapPin, Calendar, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useListings } from "../contexts/ListingsContext";
 
 const Hero: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [priceRange, setPriceRange] = useState('');
-  const [roomType, setRoomType] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [priceRange, setPriceRange] = useState("");
+  const [roomType, setRoomType] = useState("");
   const navigate = useNavigate();
   const { setFilters } = useListings();
 
   const handleSearch = () => {
     const filters: any = {};
-    
+
     if (searchQuery) {
       filters.location = searchQuery;
     }
-    
+
     if (priceRange) {
-      const [min, max] = priceRange.split('-').map(Number);
+      const [min, max] = priceRange.split("-").map(Number);
       filters.priceRange = { min, max };
     }
-    
+
     if (roomType) {
       filters.roomType = [roomType];
     }
-    
+
     setFilters(filters);
-    navigate('/browse');
+    navigate("/browse");
   };
 
   return (
@@ -36,10 +36,14 @@ const Hero: React.FC = () => {
         <div className="text-center">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
             Find Your Perfect
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-600"> Student Nest</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-600">
+              {" "}
+              Student Nest
+            </span>
           </h1>
           <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto">
-            Connect with verified students, discover amazing shared living spaces, and find your ideal roommates all in one place.
+            Connect with verified students, discover amazing shared living
+            spaces, and find your ideal roommates all in one place.
           </p>
 
           {/* Search Form */}
@@ -55,7 +59,7 @@ const Hero: React.FC = () => {
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              
+
               <div className="relative">
                 <select
                   value={priceRange}
@@ -70,7 +74,7 @@ const Hero: React.FC = () => {
                   <option value="2500-10000">$2500+</option>
                 </select>
               </div>
-              
+
               <div className="relative">
                 <select
                   value={roomType}
@@ -84,7 +88,7 @@ const Hero: React.FC = () => {
                   <option value="apartment">Full Apartment</option>
                 </select>
               </div>
-              
+
               <button
                 onClick={handleSearch}
                 className="bg-gradient-to-r from-blue-600 to-teal-600 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-teal-700 transition-all duration-200 flex items-center justify-center space-x-2 font-semibold"

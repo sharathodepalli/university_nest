@@ -1,84 +1,103 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Shield, MessageCircle, MapPin, Star, Users, Clock, CheckCircle, Target, CaseSensitive as University } from 'lucide-react';
-import Hero from '../components/Hero';
-import ListingCard from '../components/ListingCard';
-import { useListings } from '../contexts/ListingsContext';
-import { useAuth } from '../contexts/AuthContext';
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  ArrowRight,
+  Shield,
+  MessageCircle,
+  Users,
+  CheckCircle,
+  Target,
+  CaseSensitive as UniversityIcon,
+} from "lucide-react"; // Removed MapPin, Star, Clock imports
+import Hero from "../components/Hero";
+import ListingCard from "../components/ListingCard";
+import { useListings } from "../contexts/ListingsContext";
+import { useAuth } from "../contexts/AuthContext";
 
 const HomePage: React.FC = () => {
   const { user } = useAuth();
   const { listings, recommendedListings } = useListings();
   const navigate = useNavigate();
-  
+
   // Show recommended listings for logged-in users, otherwise show recent listings
-  const featuredListings = user && recommendedListings.length > 0 
-    ? recommendedListings.slice(0, 3)
-    : listings.slice(0, 3);
+  // Ensure listings array is not empty before slicing
+  const featuredListings = (
+    user && recommendedListings.length > 0 ? recommendedListings : listings
+  ).slice(0, 3); // Slice only after determining which list to use
 
   const features = [
     {
       icon: Target,
-      title: 'Smart Matching',
-      description: 'AI-powered recommendations based on your university, preferences, and budget.',
-      color: 'bg-blue-100 text-blue-600'
+      title: "Smart Matching",
+      description:
+        "AI-powered recommendations based on your university, preferences, and budget.",
+      color: "bg-blue-100 text-blue-600",
     },
     {
-      icon: University,
-      title: 'University-Focused',
-      description: 'Find housing near your campus with verified student communities.',
-      color: 'bg-purple-100 text-purple-600'
+      icon: UniversityIcon, // Using renamed icon
+      title: "University-Focused",
+      description:
+        "Find housing near your campus with verified student communities.",
+      color: "bg-purple-100 text-purple-600",
     },
     {
       icon: Shield,
-      title: 'Verified Students',
-      description: 'All users are verified with university email addresses for safety and trust.',
-      color: 'bg-green-100 text-green-600'
+      title: "Verified Students",
+      description:
+        "All users are verified with university email addresses for safety and trust.",
+      color: "bg-green-100 text-green-600",
     },
     {
       icon: MessageCircle,
-      title: 'Direct Messaging',
-      description: 'Chat directly with hosts and potential roommates through our secure platform.',
-      color: 'bg-yellow-100 text-yellow-600'
+      title: "Direct Messaging",
+      description:
+        "Chat directly with hosts and potential roommates through our secure platform.",
+      color: "bg-yellow-100 text-yellow-600",
     },
   ];
 
   const howItWorks = [
     {
       step: 1,
-      title: 'Create Your Profile',
-      description: 'Sign up with your university email and set your housing preferences.',
+      title: "Create Your Profile",
+      description:
+        "Sign up with your university email and set your housing preferences.",
       icon: Users,
     },
     {
       step: 2,
-      title: 'Get Smart Matches',
-      description: 'Our AI finds listings that match your university, budget, and lifestyle.',
+      title: "Get Smart Matches",
+      description:
+        "Our AI finds listings that match your university, budget, and lifestyle.",
       icon: Target,
     },
     {
       step: 3,
-      title: 'Connect & Chat',
-      description: 'Message hosts directly and schedule viewings or ask questions.',
+      title: "Connect & Chat",
+      description:
+        "Message hosts directly and schedule viewings or ask questions.",
       icon: MessageCircle,
     },
     {
       step: 4,
-      title: 'Move In',
-      description: 'Finalize your agreement and move into your perfect student home.',
+      title: "Move In",
+      description:
+        "Finalize your agreement and move into your perfect student home.",
       icon: CheckCircle,
     },
   ];
 
   // Get university display name
   const getUniversityDisplayName = () => {
-    if (!user?.university) return 'Students';
-    
-    // Handle "Unknown University" case
-    if (user.university === 'Unknown University' || user.university === 'Unknown') {
-      return 'Students';
+    if (!user?.university) return "Students";
+
+    if (
+      user.university === "Unknown University" ||
+      user.university === "Unknown"
+    ) {
+      return "Students";
     }
-    
+
     return `${user.university} Students`;
   };
 
@@ -92,16 +111,14 @@ const HomePage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              {user && recommendedListings.length > 0 
+              {user && recommendedListings.length > 0
                 ? `Recommended for ${getUniversityDisplayName()}`
-                : 'Featured Listings'
-              }
+                : "Featured Listings"}
             </h2>
             <p className="text-xl text-gray-600">
               {user && recommendedListings.length > 0
-                ? 'Personalized housing matches based on your preferences'
-                : 'Discover amazing student housing options in your area'
-              }
+                ? "Personalized housing matches based on your preferences"
+                : "Discover amazing student housing options in your area"}
             </p>
           </div>
 
@@ -124,7 +141,7 @@ const HomePage: React.FC = () => {
                   className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <span>
-                    {user ? 'View All Recommendations' : 'View All Listings'}
+                    {user ? "View All Recommendations" : "View All Listings"}
                   </span>
                   <ArrowRight className="w-5 h-5" />
                 </Link>
@@ -132,7 +149,7 @@ const HomePage: React.FC = () => {
             </>
           ) : (
             <div className="text-center py-12">
-              <University className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <UniversityIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 No listings available yet
               </h3>
@@ -143,7 +160,7 @@ const HomePage: React.FC = () => {
                 to={user ? "/create" : "/register"}
                 className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
               >
-                <span>{user ? 'Post a Listing' : 'Get Started'}</span>
+                <span>{user ? "Post a Listing" : "Get Started"}</span>
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </div>
@@ -168,15 +185,15 @@ const HomePage: React.FC = () => {
               const Icon = feature.icon;
               return (
                 <div key={index} className="text-center">
-                  <div className={`w-16 h-16 ${feature.color} rounded-2xl flex items-center justify-center mx-auto mb-6`}>
+                  <div
+                    className={`w-16 h-16 ${feature.color} rounded-2xl flex items-center justify-center mx-auto mb-6`}
+                  >
                     <Icon className="w-8 h-8" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-3">
                     {feature.title}
                   </h3>
-                  <p className="text-gray-600">
-                    {feature.description}
-                  </p>
+                  <p className="text-gray-600">{feature.description}</p>
                 </div>
               );
             })}
@@ -210,9 +227,7 @@ const HomePage: React.FC = () => {
                   <h3 className="text-xl font-semibold text-gray-900 mb-3">
                     {step.title}
                   </h3>
-                  <p className="text-gray-600">
-                    {step.description}
-                  </p>
+                  <p className="text-gray-600">{step.description}</p>
                 </div>
               );
             })}
@@ -227,7 +242,8 @@ const HomePage: React.FC = () => {
             Ready to Find Your Perfect Student Home?
           </h2>
           <p className="text-xl text-blue-100 mb-8">
-            Join thousands of students who have found their ideal living situation with smart matching
+            Join thousands of students who have found their ideal living
+            situation with smart matching
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link

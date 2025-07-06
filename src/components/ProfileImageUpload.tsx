@@ -1,12 +1,12 @@
-import React, { useState, useRef } from 'react';
-import { Camera, Upload, Loader2, User } from 'lucide-react';
+import React, { useState, useRef } from "react";
+import { Camera, Upload, Loader2 } from "lucide-react"; // Removed User import
 
 interface ProfileImageUploadProps {
   currentImage?: string;
   onImageChange: (imageUrl: string) => void;
   userName: string;
   disabled?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
 }
 
 const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
@@ -14,37 +14,37 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
   onImageChange,
   userName,
   disabled = false,
-  size = 'lg'
+  size = "lg",
 }) => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sizeClasses = {
-    sm: 'w-16 h-16',
-    md: 'w-24 h-24',
-    lg: 'w-32 h-32'
+    sm: "w-16 h-16",
+    md: "w-24 h-24",
+    lg: "w-32 h-32",
   };
 
   const iconSizes = {
-    sm: 'w-4 h-4',
-    md: 'w-5 h-5',
-    lg: 'w-6 h-6'
+    sm: "w-4 h-4",
+    md: "w-5 h-5",
+    lg: "w-6 h-6",
   };
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0 || disabled) return;
 
     const file = files[0];
-    
+
     // Validate file
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image too large. Maximum size is 5MB');
+      alert("Image too large. Maximum size is 5MB");
       return;
     }
 
@@ -54,8 +54,8 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
       const previewUrl = URL.createObjectURL(file);
       onImageChange(previewUrl);
     } catch (error) {
-      console.error('Error processing image:', error);
-      alert('Failed to process image. Please try again.');
+      console.error("Error processing image:", error);
+      alert("Failed to process image. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -97,9 +97,11 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
       >
         {/* Profile Image Container */}
         <div
-          className={`${sizeClasses[size]} bg-white rounded-full border-4 border-white shadow-lg flex items-center justify-center overflow-hidden ${
-            dragOver ? 'ring-2 ring-blue-500' : ''
-          } ${uploading ? 'opacity-50' : ''}`}
+          className={`${
+            sizeClasses[size]
+          } bg-white rounded-full border-4 border-white shadow-lg flex items-center justify-center overflow-hidden ${
+            dragOver ? "ring-2 ring-blue-500" : ""
+          } ${uploading ? "opacity-50" : ""}`}
         >
           {currentImage ? (
             <img
@@ -120,7 +122,9 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
         {!disabled && (
           <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             {uploading ? (
-              <Loader2 className={`${iconSizes[size]} text-white animate-spin`} />
+              <Loader2
+                className={`${iconSizes[size]} text-white animate-spin`}
+              />
             ) : (
               <Camera className={`${iconSizes[size]} text-white`} />
             )}

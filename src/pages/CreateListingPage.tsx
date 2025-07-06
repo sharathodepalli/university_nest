@@ -8,16 +8,17 @@ import {
   Calendar,
   Plus,
   X,
+  AlertCircle, // Added for warning icon
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useListings } from "../contexts/ListingsContext";
 import { amenityOptions, roomTypeOptions } from "../data/mockData";
 import { getNearbyUniversities } from "../data/universities";
 import ImageUpload from "../components/ImageUpload";
-import GeocodingService from "../utils/geocoding";
+// import GeocodingService from "../utils/geocoding"; // REMOVED STATIC IMPORT
 
 const CreateListingPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isSupabaseReady } = useAuth();
   const { addListing } = useListings();
   const navigate = useNavigate();
 
@@ -47,6 +48,7 @@ const CreateListingPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadError, setUploadError] = useState<string>("");
   const [addressError, setAddressError] = useState<string>("");
+  const [imageUploadInProgress, setImageUploadInProgress] = useState(false);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -61,11 +63,11 @@ const CreateListingPage: React.FC = () => {
     }));
   };
 
-  const handleAmenityToggle = (amenity: string) => {
+  const handleAmenityToggle = (amenityValue: string) => {
     setSelectedAmenities((prev) =>
-      prev.includes(amenity)
-        ? prev.filter((a) => a !== amenity)
-        : [...prev, amenity]
+      prev.includes(amenityValue)
+        ? prev.filter((a) => a !== amenityValue)
+        : [...prev, amenityValue]
     );
   };
 
@@ -81,12 +83,41 @@ const CreateListingPage: React.FC = () => {
     setRules((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const onImageUploadStart = () => {
+    setImageUploadInProgress(true);
+    setUploadError("");
+  };
+
+  const onImageUploadComplete = (urls: string[]) => {
+    setImageUploadInProgress(false);
+  };
+
+  const onImageUploadError = (error: string) => {
+    setImageUploadInProgress(false);
+    setUploadError(`Image upload failed: ${error}`);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
     if (images.length === 0) {
-      setUploadError("Please upload at least one image");
+      setUploadError("Please upload at least one image.");
+      return;
+    }
+
+    const hasLocalImages = images.some((url) => url.startsWith("blob:"));
+    if (isSupabaseReady && hasLocalImages) {
+      setUploadError(
+        "Some images are still local previews (failed to upload to cloud storage). Please ensure all images upload successfully or check your Supabase configuration."
+      );
+      return;
+    }
+
+    if (imageUploadInProgress) {
+      setUploadError(
+        "Image upload is still in progress. Please wait for it to complete."
+      );
       return;
     }
 
@@ -95,7 +126,9 @@ const CreateListingPage: React.FC = () => {
     setAddressError("");
 
     try {
-      // Geocode the address to get coordinates
+      // DYNAMIC IMPORT: Load GeocodingService only when needed for submission
+      const { default: GeocodingService } = await import("../utils/geocoding");
+
       const fullAddress = `${formData.address}, ${formData.city}, ${formData.state}`;
       const geocodeResult = await GeocodingService.geocodeAddress(fullAddress);
 
@@ -112,7 +145,6 @@ const CreateListingPage: React.FC = () => {
         return;
       }
 
-      // Get nearby universities for the location
       const nearbyUniversities = getNearbyUniversities({
         lat: geocodeResult.latitude,
         lng: geocodeResult.longitude,
@@ -166,6 +198,12 @@ const CreateListingPage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  const isSubmitDisabled =
+    isSubmitting ||
+    imageUploadInProgress ||
+    images.length === 0 ||
+    (!isSupabaseReady && images.length > 0);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -323,12 +361,37 @@ const CreateListingPage: React.FC = () => {
               <ImageUpload
                 images={images}
                 onImagesChange={setImages}
+                uploadType="listing"
                 maxImages={10}
-                disabled={isSubmitting}
+                disabled={
+                  isSubmitting || (!isSupabaseReady && images.length > 0)
+                }
+                realTimeUpload={true}
+                onUploadStart={onImageUploadStart}
+                onUploadComplete={onImageUploadComplete}
+                onUploadError={onImageUploadError}
               />
-
+              {imageUploadInProgress && (
+                <div className="flex items-center space-x-2 text-sm text-blue-600 mt-2">
+                  <AlertCircle className="w-4 h-4 animate-spin" />
+                  <span>Uploading images... please wait.</span>
+                </div>
+              )}
               {uploadError && (
-                <p className="text-red-600 text-sm">{uploadError}</p>
+                <p className="text-red-600 text-sm flex items-center space-x-2 mt-2">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>{uploadError}</span>
+                </p>
+              )}
+              {!isSupabaseReady && images.length > 0 && (
+                <div className="flex items-center space-x-2 text-yellow-700 text-sm bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-2">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                  <span>
+                    Warning: Supabase is not configured. Images will only be
+                    stored locally in your browser. They will NOT be saved
+                    permanently or visible to other users if you submit.
+                  </span>
+                </div>
               )}
             </div>
 
@@ -580,7 +643,7 @@ const CreateListingPage: React.FC = () => {
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitDisabled}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Creating..." : "Create Listing"}

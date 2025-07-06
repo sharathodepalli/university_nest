@@ -8,7 +8,6 @@ import React, {
 import { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { User } from "../types";
-import GeocodingService from "../utils/geocoding";
 import { Database } from "../types/database";
 
 interface AuthContextType {
@@ -18,6 +17,8 @@ interface AuthContextType {
   register: (userData: Partial<User> & { password: string }) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
+  resetPasswordForEmail: (email: string) => Promise<void>; // Added function
+  updatePassword: (newPassword: string) => Promise<void>; // Added function
   isLoading: boolean;
   isSupabaseReady: boolean;
 }
@@ -27,7 +28,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuth must be used within a AuthProvider");
   }
   return context;
 };
@@ -35,6 +36,8 @@ export const useAuth = () => {
 interface AuthProviderProps {
   children: ReactNode;
 }
+
+const LOCAL_STORAGE_VERSION = 1;
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -44,10 +47,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSupabaseReady] = useState(isSupabaseConfigured());
 
-  /**
-   * Attempts to fetch user's current geolocation and update their profile in DB.
-   * Logs warnings if geolocation is denied or not supported.
-   */
   const fetchUserGeolocation = async (currentUserId: string) => {
     if (!navigator.geolocation) {
       console.warn("[AuthContext] Geolocation not supported by this browser.");
@@ -57,11 +56,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const position = await new Promise<GeolocationPosition>(
         (resolve, reject) => {
-          // Request geolocation with options for high accuracy and timeout
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             enableHighAccuracy: true,
-            timeout: 5000, // 5 seconds
-            maximumAge: 0, // No cached position
+            timeout: 5000,
+            maximumAge: 0,
           });
         }
       );
@@ -71,7 +69,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         `[AuthContext] Geolocation obtained: Lat ${latitude}, Lng ${longitude}`
       );
 
-      // Reverse geocode to get human-readable address components
+      const { default: GeocodingService } = await import("../utils/geocoding");
+
       const reverseGeocodeResult = await GeocodingService.reverseGeocode(
         latitude,
         longitude
@@ -89,8 +88,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const addressComponents = reverseGeocodeResult.formattedAddress
           .split(",")
           .map((s) => s.trim());
-        // Attempt to parse common components from formatted address string
-        // This heuristic might need refinement based on expected address formats
         if (addressComponents.length >= 3) {
           city = addressComponents[addressComponents.length - 3];
           state = addressComponents[addressComponents.length - 2].split(" ")[0];
@@ -101,9 +98,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
 
-      // Update user's profile with location coordinates in the database if Supabase is configured
       if (isSupabaseReady) {
-        // Cast to Partial<Database['public']['Tables']['profiles']['Update']> for type safety with DB update
         const { error: updateError } = await supabase
           .from("profiles")
           .update({
@@ -113,7 +108,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               state,
               country,
               coordinates: { lat: latitude, lng: longitude },
-            } as User["location"], // Assert to User['location'] type defined in types/index.ts
+            } as User["location"],
           })
           .eq("id", currentUserId);
 
@@ -127,7 +122,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
 
-      // Update local user state
       setUser((prev) =>
         prev
           ? {
@@ -151,35 +145,55 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  /**
-   * Initializes authentication state from Supabase session or localStorage.
-   * Attempts to fetch user profile and geolocation.
-   */
   useEffect(() => {
-    let mounted = true; // Flag to prevent state updates on unmounted component
+    let mounted = true;
 
     const initializeAuth = async () => {
+      setIsLoading(true);
+
       if (!isSupabaseReady) {
-        // Development Mode: Load user from localStorage
-        const storedUser = localStorage.getItem("uninest_user");
-        if (storedUser && mounted) {
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            setUser(parsedUser);
-            // In mock mode, attempt to set a default user location if not present
-            if (!parsedUser.location?.coordinates && parsedUser.id) {
-              await fetchUserGeolocation(parsedUser.id);
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            "[AuthContext] Running in DEVELOPMENT mode: Loading mock user from localStorage."
+          );
+          const storedData = localStorage.getItem("uninest_user_data");
+          if (storedData && mounted) {
+            try {
+              const parsedData = JSON.parse(storedData);
+              if (parsedData.version === LOCAL_STORAGE_VERSION) {
+                setUser(parsedData.user);
+                if (
+                  !parsedData.user.location?.coordinates &&
+                  parsedData.user.id
+                ) {
+                  await fetchUserGeolocation(parsedData.user.id);
+                }
+              } else {
+                console.warn(
+                  "[AuthContext] localStorage version mismatch in DEV. Clearing cached user data."
+                );
+                localStorage.removeItem("uninest_user_data");
+                setUser(null);
+              }
+            } catch (error) {
+              console.error(
+                "[AuthContext] Error parsing stored user data in DEV:",
+                error
+              );
+              localStorage.removeItem("uninest_user_data");
+              setUser(null);
             }
-          } catch (error) {
-            console.error("[AuthContext] Error parsing stored user:", error);
-            localStorage.removeItem("uninest_user"); // Clear corrupted data
           }
+        } else {
+          console.error(
+            "[AuthContext] ERROR: Supabase is NOT configured in PRODUCTION mode. Authentication will not work."
+          );
+          setUser(null);
         }
-        if (mounted) setIsLoading(false);
+        setIsLoading(false);
         return;
       }
 
-      // Production/Real-Time Mode: Fetch session from Supabase
       try {
         const {
           data: { session },
@@ -188,7 +202,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (error) {
           console.error("[AuthContext] Error getting Supabase session:", error);
-          if (mounted) setIsLoading(false);
+          if (mounted) setUser(null);
           return;
         }
 
@@ -196,20 +210,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setSupabaseUser(session?.user ?? null);
           if (session?.user) {
             await fetchUserProfile(session.user.id);
-            await fetchUserGeolocation(session.user.id); // Get geolocation after profile is loaded
+            await fetchUserGeolocation(session.user.id);
           } else {
-            setIsLoading(false); // No user session
+            setUser(null);
           }
         }
       } catch (error) {
-        console.error("[AuthContext] Error initializing auth process:", error);
+        console.error(
+          "[AuthContext] Error during Supabase session initialization:",
+          error
+        );
+        if (mounted) setUser(null);
+      } finally {
         if (mounted) setIsLoading(false);
       }
     };
 
     initializeAuth();
 
-    // Subscribe to Supabase auth state changes for real-time updates
     let subscription: { data: { subscription: any } } | null = null;
     if (isSupabaseReady) {
       subscription = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -217,52 +235,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           `[AuthContext] Auth state changed: ${event}`,
           session?.user?.email
         );
+        setIsLoading(true);
 
-        if (!mounted) return; // Prevent state update if component unmounted
+        if (!mounted) return;
 
         setSupabaseUser(session?.user ?? null);
 
         if (session?.user) {
           await fetchUserProfile(session.user.id);
-          await fetchUserGeolocation(session.user.id); // Re-fetch geolocation on auth change
+          await fetchUserGeolocation(session.user.id);
         } else {
-          setUser(null); // Clear user state on logout
+          setUser(null);
           setIsLoading(false);
         }
       });
     }
 
-    // Cleanup: Unsubscribe from auth changes on component unmount
     return () => {
-      mounted = false; // Mark as unmounted
+      mounted = false;
       if (subscription?.data?.subscription) {
         subscription.data.subscription.unsubscribe();
       }
     };
-  }, [isSupabaseReady]); // Dependency: re-run if Supabase readiness changes
+  }, [isSupabaseReady]);
 
-  /**
-   * Fetches the user's profile from the 'profiles' table.
-   * Creates a basic profile if not found.
-   */
   const fetchUserProfile = async (userId: string) => {
     try {
       console.log(`[AuthContext] Fetching profile for user: ${userId}`);
 
-      // Explicitly type the expected data row from the profiles table
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
-        .single<Database["public"]["Tables"]["profiles"]["Row"]>(); // Correctly type the data here
+        .single<Database["public"]["Tables"]["profiles"]["Row"]>();
 
       if (error) {
         console.error("[AuthContext] Error fetching profile:", error);
 
         if (error.code === "PGRST116") {
-          // Supabase "Row not found" error code
           console.log(
-            "[AuthContext] Profile not found, creating basic user from auth data"
+            "[AuthContext] Profile not found in DB. Creating basic user on frontend from auth metadata."
           );
           const basicUser: User = {
             id: userId,
@@ -272,9 +284,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               "User",
             email: supabaseUser?.email || "",
             university:
-              supabaseUser?.user_metadata?.university ||
-              "University of California, Berkeley",
-            year: supabaseUser?.user_metadata?.year || "Junior",
+              supabaseUser?.user_metadata?.university || "Unknown University",
+            year: supabaseUser?.user_metadata?.year || "Unknown",
             bio: "",
             verified: false,
             createdAt: new Date(),
@@ -288,14 +299,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               preferredAmenities: ["Wi-Fi", "Laundry"],
             },
             location: {
-              // Provide default location with empty address
               address: "",
-              city: "Berkeley",
-              state: "California",
+              city: "Unknown City",
+              state: "Unknown State",
               country: "USA",
               coordinates: {
-                lat: 37.8719,
-                lng: -122.2585,
+                lat: 0,
+                lng: 0,
               },
             },
             matchingPreferences: {
@@ -309,30 +319,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             },
           };
           setUser(basicUser);
-          setIsLoading(false);
-          return; // Exit function after creating basic user
+          return;
         }
 
-        setIsLoading(false); // Set loading to false on other errors
-        return; // Exit function on error
+        setUser(null);
+        return;
       }
 
       if (data) {
         console.log("[AuthContext] Profile found:", data);
 
-        // Map database row data to frontend User type
         const userProfile: User = {
           id: data.id,
           name: data.name,
-          email: supabaseUser?.email || "", // Use Supabase auth email as primary
+          email: supabaseUser?.email || "",
           university: data.university,
           year: data.year,
           bio: data.bio || "",
-          phone: data.phone || undefined, // Convert null to undefined if schema allows optional
-          verified: Boolean(data.verified), // Ensure boolean type
-          profilePicture: data.profile_picture || undefined, // Convert null to undefined
+          phone: data.phone || undefined,
+          verified: Boolean(data.verified),
+          profilePicture: data.profile_picture || undefined,
           preferences: data.preferences || {
-            // Provide default if null
             smokingAllowed: false,
             petsAllowed: true,
             studyFriendly: true,
@@ -342,15 +349,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             preferredAmenities: ["Wi-Fi", "Laundry"],
           },
           location: data.location || {
-            // Provide default if null
             address: "",
-            city: "Berkeley",
-            state: "California",
+            city: "Unknown City",
+            state: "Unknown State",
             country: "USA",
-            coordinates: { lat: 37.8719, lng: -122.2585 },
+            coordinates: { lat: 0, lng: 0 },
           },
           matchingPreferences: data.matchingPreferences || {
-            // Provide default if null
             maxDistance: 25,
             sameUniversity: true,
             similarYear: false,
@@ -363,194 +368,158 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(userProfile);
       }
     } catch (error) {
-      // Corrected try-catch block structure
       console.error("[AuthContext] Error in fetchUserProfile:", error);
+      setUser(null);
     } finally {
-      console.log(
-        "[AuthContext] Profile fetch completed, setting loading to false"
-      );
       setIsLoading(false);
     }
   };
 
-  /**
-   * Handles user login with email and password.
-   * Falls back to mock authentication if Supabase fails or is not ready.
-   */
   const login = async (email: string, password: string) => {
+    setIsLoading(true);
+
     if (!isSupabaseReady) {
-      console.log("[AuthContext] Mock login for development.");
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate network delay
-      const mockUser: User = {
-        id: "mock-user-1", // Unique ID for mock user
-        name: "Mock Alex Johnson",
-        email: email,
-        university: "University of California, Berkeley",
-        year: "Junior",
-        bio: "Mock profile: Computer Science student looking for a quiet place to study.",
-        verified: true,
-        createdAt: new Date(),
-        preferences: {
-          smokingAllowed: false,
-          petsAllowed: true,
-          studyFriendly: true,
-          socialLevel: "moderate",
-          maxBudget: 1500,
-          preferredRoomTypes: ["single", "studio"],
-          preferredAmenities: ["Wi-Fi", "Laundry", "Kitchen"],
-        },
-        location: {
-          address: "123 Mock St, Berkeley",
-          city: "Berkeley",
-          state: "California",
-          country: "USA",
-          coordinates: { lat: 37.8719, lng: -122.2585 }, // Default mock coordinates
-        },
-        matchingPreferences: {
-          maxDistance: 25,
-          sameUniversity: true,
-          similarYear: false,
-          budgetRange: { min: 800, max: 1500 },
-        },
-      };
-      setUser(mockUser);
-      localStorage.setItem("uninest_user", JSON.stringify(mockUser));
-      await fetchUserGeolocation(mockUser.id); // Attempt geolocation even for mock users
-      return;
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] Mock login for development.");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const mockUser: User = {
+          id: "mock-user-1",
+          name: "Mock Alex Johnson",
+          email: email,
+          university: "University of California, Berkeley",
+          year: "Junior",
+          bio: "Mock profile: Computer Science student looking for a quiet place to study.",
+          verified: true,
+          createdAt: new Date(),
+          preferences: {
+            smokingAllowed: false,
+            petsAllowed: true,
+            studyFriendly: true,
+            socialLevel: "moderate",
+            maxBudget: 1500,
+            preferredRoomTypes: ["single"],
+            preferredAmenities: ["Wi-Fi", "Laundry"],
+          },
+          location: {
+            address: "123 Mock St, Berkeley",
+            city: "Berkeley",
+            state: "California",
+            country: "USA",
+            coordinates: { lat: 37.8719, lng: -122.2585 },
+          },
+          matchingPreferences: {
+            maxDistance: 25,
+            sameUniversity: true,
+            similarYear: false,
+            budgetRange: { min: 800, max: 1500 },
+          },
+        };
+        setUser(mockUser);
+        localStorage.setItem(
+          "uninest_user_data",
+          JSON.stringify({ version: LOCAL_STORAGE_VERSION, user: mockUser })
+        );
+        await fetchUserGeolocation(mockUser.id);
+        setIsLoading(false);
+        return;
+      } else {
+        const errorMsg = "Supabase is not configured. Login is unavailable.";
+        console.error(`[AuthContext] ERROR: ${errorMsg}`);
+        setIsLoading(false);
+        throw new Error(errorMsg);
+      }
     }
 
     try {
-      setIsLoading(true);
-      console.log(`[AuthContext] Attempting login for: ${email}`);
+      console.log(`[AuthContext] Attempting real login for: ${email}`);
 
-      // Attempt Supabase login with a timeout
-      const loginPromise = supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,
       });
 
-      const timeoutPromise = new Promise<never>(
-        (
-          _,
-          reject // Type as never
-        ) =>
-          setTimeout(
-            () =>
-              reject(
-                new Error(
-                  "Login timed out. Falling back to mock authentication."
-                )
-              ),
-            10000 // 10 seconds timeout
-          )
-      );
-
-      const { data, error } = (await Promise.race([
-        loginPromise,
-        timeoutPromise,
-      ])) as { data: any; error: any }; // Explicitly cast to prevent type issues from Promise.race
-
       if (error) {
         console.error("[AuthContext] Supabase login error:", error);
-        throw error; // Re-throw to trigger catch block for mock fallback
+        throw error;
       }
-      console.log(`[AuthContext] Login successful for: ${data.user?.email}`);
-      // Auth state change handler will automatically fetch profile and geolocation
-    } catch (error: any) {
-      console.error(
-        "[AuthContext] Login process failed. Falling back to mock authentication.",
-        error
+
+      console.log(
+        `[AuthContext] Login initiated successfully. Waiting for onAuthStateChange.`
       );
-      // Always fallback to mock login on any error during the real login process
-      const mockUser: User = {
-        id: "mock-user-fallback", // Different ID for fallback mock user
-        name: "Mock Fallback User",
-        email: email, // Use attempted email
-        university: "University of California, Berkeley",
-        year: "Junior",
-        bio: "Mock profile: Login failed, using fallback mock data.",
-        verified: false,
-        createdAt: new Date(),
-        preferences: {
-          smokingAllowed: false,
-          petsAllowed: true,
-          studyFriendly: true,
-          socialLevel: "moderate",
-          maxBudget: 1500,
-          preferredRoomTypes: ["single"],
-          preferredAmenities: ["Wi-Fi", "Laundry", "Kitchen"],
-        },
-        location: {
-          address: "456 Fallback Ave, San Francisco",
-          city: "San Francisco",
-          state: "California",
-          country: "USA",
-          coordinates: { lat: 37.7749, lng: -122.4194 }, // Default fallback coordinates
-        },
-        matchingPreferences: {
-          maxDistance: 25,
-          sameUniversity: true,
-          similarYear: false,
-          budgetRange: { min: 800, max: 1500 },
-        },
-      };
-      setUser(mockUser);
-      localStorage.setItem("uninest_user", JSON.stringify(mockUser));
-      await fetchUserGeolocation(mockUser.id);
+    } catch (error: any) {
+      console.error("[AuthContext] Real login failed:", error);
+      setUser(null);
       setIsLoading(false);
+      throw new Error(
+        error.message || "Login failed. Please check your credentials."
+      );
     }
   };
 
   /**
    * Handles user registration.
-   * Falls back to mock registration if Supabase is not ready.
+   * In production, registers user via Supabase. In dev, uses mock data.
+   * If real registration fails, it does NOT fall back to mock user in production.
    */
   const register = async (userData: Partial<User> & { password: string }) => {
+    setIsLoading(true);
+
     if (!isSupabaseReady) {
-      console.log("[AuthContext] Mock registration for development.");
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const newUser: User = {
-        id: `mock-user-${Date.now()}`, // Unique ID for mock user
-        name: userData.name || "",
-        email: userData.email || "",
-        university: userData.university || "",
-        year: userData.year || "",
-        bio: userData.bio || "",
-        verified: false,
-        createdAt: new Date(),
-        preferences: {
-          smokingAllowed: false,
-          petsAllowed: true,
-          studyFriendly: true,
-          socialLevel: "moderate",
-          maxBudget: 1500,
-          preferredRoomTypes: ["single"],
-          preferredAmenities: ["Wi-Fi", "Laundry"],
-        },
-        location: {
-          address: "", // Default empty address
-          city: "Berkeley",
-          state: "California",
-          country: "USA",
-          coordinates: { lat: 37.8719, lng: -122.2585 },
-        },
-        matchingPreferences: {
-          maxDistance: 25,
-          sameUniversity: true,
-          similarYear: false,
-          budgetRange: { min: 500, max: 2000 },
-        },
-      };
-      setUser(newUser);
-      localStorage.setItem("uninest_user", JSON.stringify(newUser));
-      await fetchUserGeolocation(newUser.id); // Attempt geolocation for new mock users
-      return;
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] Mock registration for development.");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const newUser: User = {
+          id: `mock-user-${Date.now()}`,
+          name: userData.name || "",
+          email: userData.email || "",
+          university: userData.university || "",
+          year: userData.year || "",
+          bio: userData.bio || "",
+          verified: false,
+          createdAt: new Date(),
+          preferences: {
+            smokingAllowed: false,
+            petsAllowed: true,
+            studyFriendly: true,
+            socialLevel: "moderate",
+            maxBudget: 1500,
+            preferredRoomTypes: ["single"],
+            preferredAmenities: ["Wi-Fi", "Laundry"],
+          },
+          location: {
+            address: "",
+            city: "Berkeley",
+            state: "California",
+            country: "USA",
+            coordinates: { lat: 37.8719, lng: -122.2585 },
+          },
+          matchingPreferences: {
+            maxDistance: 25,
+            sameUniversity: true,
+            similarYear: false,
+            budgetRange: { min: 500, max: 2000 },
+          },
+        };
+        setUser(newUser);
+        localStorage.setItem(
+          "uninest_user_data",
+          JSON.stringify({ version: LOCAL_STORAGE_VERSION, user: newUser })
+        );
+        await fetchUserGeolocation(newUser.id);
+        setIsLoading(false);
+        return;
+      } else {
+        const errorMsg =
+          "Supabase is not configured. Registration is unavailable.";
+        console.error(`[AuthContext] ERROR: ${errorMsg}`);
+        setIsLoading(false);
+        throw new Error(errorMsg);
+      }
     }
 
     try {
-      setIsLoading(true);
       console.log(
-        `[AuthContext] Attempting registration for: ${userData.email}`
+        `[AuthContext] Attempting real registration for: ${userData.email}`
       );
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -571,41 +540,69 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       if (authData.user) {
-        console.log("[AuthContext] User created, creating profile...");
-        const { error: profileError } = await supabase.from("profiles").insert({
-          id: authData.user.id,
-          name: userData.name!,
-          university: userData.university!,
-          year: userData.year!,
-          bio: userData.bio || "",
-          phone: userData.phone || null, // Ensure null for optional DB columns
-          verified: false,
-          preferences: userData.preferences || {}, // Default empty object if not provided
-        });
+        console.log(
+          "[AuthContext] User created in Auth. Creating profile in 'profiles' table..."
+        );
+        const profileInsertPayload: Database["public"]["Tables"]["profiles"]["Insert"] =
+          {
+            id: authData.user.id,
+            name: userData.name!,
+            university: userData.university!,
+            year: userData.year!,
+            email: userData.email!, // Include email in profiles table
+            bio: userData.bio || "",
+            phone: userData.phone || null,
+            verified: false,
+            profile_picture: null,
+            preferences: userData.preferences || {},
+            location: {}, // Default empty object
+            matchingPreferences: {}, // Default empty object
+          };
+        console.log(
+          "[AuthContext] Profile Insert Payload:",
+          profileInsertPayload
+        );
+
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .insert(profileInsertPayload);
+
         if (profileError) {
-          console.error("[AuthContext] Profile creation error:", profileError);
+          console.error(
+            "[AuthContext] Profile creation error for 'profiles' table:",
+            profileError
+          );
           throw profileError;
         }
         console.log(
-          "[AuthContext] Registration and profile creation successful"
+          "[AuthContext] Profile in 'profiles' table created successfully. Waiting for onAuthStateChange."
         );
-        // Auth state change handler will pick up the new session and fetch profile/geolocation
       }
     } catch (error: any) {
-      console.error("[AuthContext] Registration process failed:", error);
+      console.error("[AuthContext] Real registration failed:", error);
+      setUser(null);
       setIsLoading(false);
-      throw new Error(error.message || "Registration failed");
+      throw new Error(
+        error.message || "Registration failed. Please try again."
+      );
     }
   };
 
-  /**
-   * Handles user logout.
-   */
   const logout = async () => {
+    setIsLoading(true);
+
     if (!isSupabaseReady) {
-      console.log("[AuthContext] Mock logout.");
-      setUser(null);
-      localStorage.removeItem("uninest_user");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] Mock logout.");
+        setUser(null);
+        localStorage.removeItem("uninest_user_data");
+      } else {
+        console.warn(
+          "[AuthContext] Supabase not configured in PROD. Cannot perform real logout."
+        );
+        setUser(null);
+      }
+      setIsLoading(false);
       return;
     }
     try {
@@ -617,23 +614,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log("[AuthContext] Logout successful.");
     } catch (error) {
       console.error("[AuthContext] Logout process failed:", error);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  /**
-   * Updates the user's profile in the database.
-   */
   const updateProfile = async (updates: Partial<User>) => {
+    setIsLoading(true);
+
     if (!user) throw new Error("No user logged in to update profile.");
     if (!isSupabaseReady) {
-      console.log("[AuthContext] Mock profile update.");
-      const updatedUser = { ...user, ...updates };
-      setUser(updatedUser);
-      localStorage.setItem("uninest_user", JSON.stringify(updatedUser));
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] Mock profile update.");
+        const updatedUser = { ...user, ...updates };
+        setUser(updatedUser);
+        localStorage.setItem(
+          "uninest_user_data",
+          JSON.stringify({ version: LOCAL_STORAGE_VERSION, user: updatedUser })
+        );
+      } else {
+        const errorMsg =
+          "Supabase is not configured. Profile updates are unavailable.";
+        console.error(`[AuthContext] ERROR: ${errorMsg}`);
+        setIsLoading(false);
+        throw new Error(errorMsg);
+      }
+      setIsLoading(false);
       return;
     }
     try {
-      // Cast updates to match the DB table's update type for safety
       const profileUpdates: Database["public"]["Tables"]["profiles"]["Update"] =
         {
           name: updates.name,
@@ -643,8 +653,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           phone: updates.phone,
           profile_picture: updates.profilePicture,
           preferences: updates.preferences,
-          location: updates.location, // location is jsonb, directly assignable
-          matchingPreferences: updates.matchingPreferences, // matchingPreferences is jsonb
+          location: updates.location,
+          matchingPreferences: updates.matchingPreferences,
         };
 
       const { error } = await supabase
@@ -656,12 +666,93 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error("[AuthContext] Profile update error:", error);
         throw error;
       }
-      // Update local user state
       setUser((prev) => (prev ? { ...prev, ...updates } : null));
       console.log("[AuthContext] Profile updated successfully.");
     } catch (error: any) {
       console.error("[AuthContext] Profile update process failed:", error);
       throw new Error(error.message || "Profile update failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetPasswordForEmail = async (email: string) => {
+    if (!isSupabaseReady) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[AuthContext] Mock password reset for ${email}. In a real app, an email would be sent.`
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return;
+      } else {
+        const errorMsg =
+          "Supabase is not configured. Password reset is unavailable.";
+        console.error(`[AuthContext] ERROR: ${errorMsg}`);
+        throw new Error(errorMsg);
+      }
+    }
+
+    try {
+      console.log(`[AuthContext] Requesting password reset for: ${email}`);
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.trim(),
+        {
+          redirectTo: `${window.location.origin}/update-password`,
+        }
+      );
+
+      if (error) {
+        console.error("[AuthContext] Supabase password reset error:", error);
+        throw error;
+      }
+
+      console.log(
+        `[AuthContext] Password reset email sent successfully to ${email}.`
+      );
+    } catch (error: any) {
+      console.error("[AuthContext] Password reset failed:", error);
+      throw new Error(
+        error.message || "Password reset failed. Please try again."
+      );
+    }
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    setIsLoading(true);
+    if (!isSupabaseReady || !supabaseUser) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AuthContext] Mock password update.");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      } else {
+        const errorMsg =
+          "Supabase is not configured or user is not logged in. Password update is unavailable.";
+        console.error(`[AuthContext] ERROR: ${errorMsg}`);
+        setIsLoading(false);
+        throw new Error(errorMsg);
+      }
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      console.log("[AuthContext] Attempting to update password.");
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        console.error("[AuthContext] Supabase password update error:", error);
+        throw error;
+      }
+
+      console.log("[AuthContext] Password updated successfully.");
+    } catch (error: any) {
+      console.error("[AuthContext] Password update failed:", error);
+      throw new Error(
+        error.message || "Password update failed. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -672,6 +763,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     updateProfile,
+    resetPasswordForEmail,
+    updatePassword,
     isLoading,
     isSupabaseReady,
   };

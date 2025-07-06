@@ -1,11 +1,11 @@
-import React from 'react';
+import React from "react";
 
 const SkeletonCard: React.FC = () => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-pulse">
       {/* Image skeleton */}
       <div className="w-full h-48 bg-gray-200"></div>
-      
+
       {/* Content skeleton */}
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
@@ -50,7 +50,7 @@ const SkeletonCard: React.FC = () => {
               <div className="h-3 bg-gray-200 rounded w-20"></div>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <div className="h-4 bg-gray-200 rounded w-8"></div>
             <div className="h-4 bg-gray-200 rounded w-12"></div>

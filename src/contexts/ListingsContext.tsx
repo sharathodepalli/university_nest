@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
-import { Listing, SearchFilters, User } from "../types"; // Make sure SearchFilters is imported
+import { Listing, SearchFilters, User } from "../types";
 import { mockListings } from "../data/mockData";
 import MatchingService from "../lib/matching";
 import { errorHandler } from "../lib/errorHandler";
@@ -97,23 +97,28 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
     return Array.from(universities).sort();
   }, [listings, user]);
 
-  // Memoized refresh function to prevent unnecessary re-renders
+  /**
+   * Refreshes the list of listings, either from mock data or Supabase.
+   * Also populates nearby universities and handles coordinate validation.
+   */
   const refreshListings = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      console.log("Refreshing listings. Supabase ready:", isSupabaseReady);
+      console.log(
+        "[ListingsContext] Refreshing listings. Supabase ready:",
+        isSupabaseReady
+      );
 
       if (!isSupabaseReady) {
         // Use mock data with verified real addresses for development
         console.log(
-          "Using mock data. Available listings:",
+          "[ListingsContext] Using mock data. Available listings:",
           mockListings.length
         );
         await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate loading
 
-        // Use the real address integration to get listings with verified addresses and accurate distances
         const listingsWithRealAddresses =
           updateListingsWithRealAddresses(mockListings);
 
@@ -124,6 +129,7 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
 
       const startTime = performance.now();
 
+      // Fetch listings and their host profiles from Supabase
       const { data, error: fetchError } = await supabase
         .from("listings")
         .select(
@@ -138,7 +144,9 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
             phone,
             verified,
             profile_picture,
-            preferences
+            preferences,
+            location,
+            matchingPreferences
           )
         `
         )
@@ -157,13 +165,28 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
       const formattedListings = (data || [])
         .map((item): Listing | null => {
           try {
-            const latitude = item.location?.latitude || 0;
-            const longitude = item.location?.longitude || 0;
+            const latitude = item.location?.latitude;
+            const longitude = item.location?.longitude;
 
-            const nearbyUniversities = getNearbyUniversities(
-              { lat: latitude, lng: longitude },
-              50 // 50 miles radius
-            );
+            let nearbyUniversities: { name: string; distance: number }[] = [];
+
+            // Only calculate nearby universities if valid coordinates are present
+            // This prevents calculating distances from (0,0) 'Null Island'
+            if (
+              typeof latitude === "number" &&
+              latitude !== 0 &&
+              typeof longitude === "number" &&
+              longitude !== 0
+            ) {
+              nearbyUniversities = getNearbyUniversities(
+                { lat: latitude, lng: longitude },
+                50 // 50 miles radius
+              );
+            } else {
+              console.warn(
+                `[ListingsContext] Listing ${item.id} has invalid or zero coordinates. Skipping nearby universities calculation.`
+              );
+            }
 
             return {
               id: item.id,
@@ -175,9 +198,9 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
                 city: item.location?.city || "Unknown",
                 state: item.location?.state || "Unknown",
                 country: item.location?.country || "USA",
-                latitude: latitude,
-                longitude: longitude,
-                nearbyUniversities: nearbyUniversities,
+                latitude: typeof latitude === "number" ? latitude : 0, // Ensure numeric type for latitude
+                longitude: typeof longitude === "number" ? longitude : 0, // Ensure numeric type for longitude
+                nearbyUniversities: nearbyUniversities, // Assign the (potentially empty) calculated array
               },
               roomType: item.room_type || "single",
               amenities: Array.isArray(item.amenities) ? item.amenities : [],
@@ -192,18 +215,30 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
                 typeof item.max_occupants === "number" ? item.max_occupants : 1,
               hostId: item.host_id,
               host: {
+                // Map fetched profile data to User type
                 id: item.profiles?.id || item.host_id,
                 name: item.profiles?.name || "Unknown Host",
-                email: "", // Email not exposed for privacy
+                email: item.profiles?.email || "", // Email should be pulled from profiles table now
                 university: item.profiles?.university || "Unknown University",
                 year: item.profiles?.year || "Unknown",
                 bio: item.profiles?.bio || "",
-                phone: item.profiles?.phone,
+                phone: item.profiles?.phone || undefined,
                 verified: Boolean(item.profiles?.verified),
-                profilePicture: item.profiles?.profile_picture,
+                profilePicture: item.profiles?.profile_picture || undefined,
                 preferences: item.profiles?.preferences || {},
-                createdAt: new Date(),
-              } as User,
+                location: item.profiles?.location || {
+                  // Use fetched location from profile or default
+                  address: "",
+                  city: "",
+                  state: "",
+                  country: "",
+                  coordinates: { lat: 0, lng: 0 },
+                },
+                matchingPreferences: item.profiles?.matchingPreferences || {}, // Use fetched matchingPreferences or default
+                createdAt: item.profiles?.created_at
+                  ? new Date(item.profiles.created_at)
+                  : new Date(),
+              } as User, // Assert as User type
               createdAt: item.created_at
                 ? new Date(item.created_at)
                 : new Date(),
@@ -221,12 +256,15 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
             errorHandler.logError(
               new Error(`Error formatting listing ${item.id}: ${itemError}`)
             );
-            return null;
+            return null; // Return null for problematic listings
           }
         })
-        .filter((listing): listing is Listing => listing !== null);
+        .filter((listing): listing is Listing => listing !== null); // Filter out nulls
 
-      console.log("Formatted listings:", formattedListings.length);
+      console.log(
+        "[ListingsContext] Formatted listings:",
+        formattedListings.length
+      );
       setListings(formattedListings);
     } catch (error) {
       const errorMessage =
@@ -236,17 +274,20 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
 
       // Always fallback to mock data on error or in development
       console.log(
-        "Error occurred, falling back to mock data. Error:",
+        "[ListingsContext] Error occurred, falling back to mock data. Error:",
         errorMessage
       );
-      setListings(mockListings);
+      setListings(updateListingsWithRealAddresses(mockListings)); // Ensure mock data fallback is also processed
     } finally {
       setIsLoading(false);
     }
   }, [isSupabaseReady]);
 
+  /**
+   * Fetches favorite listings for the current user.
+   */
   const fetchFavorites = useCallback(async () => {
-    if (!user) return;
+    if (!user) return; // Only fetch if user is logged in
 
     try {
       if (!isSupabaseReady) {
@@ -257,13 +298,16 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
             const parsed = JSON.parse(storedFavorites);
             setFavoriteListings(Array.isArray(parsed) ? parsed : []);
           } catch (error) {
-            errorHandler.logError(new Error("Error parsing stored favorites"));
+            errorHandler.logError(
+              new Error("[ListingsContext] Error parsing stored favorites")
+            );
             setFavoriteListings([]);
           }
         }
         return;
       }
 
+      // Fetch favorites from Supabase
       const { data, error } = await supabase
         .from("favorites")
         .select("listing_id")
@@ -275,21 +319,40 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
 
       setFavoriteListings((data || []).map((fav: any) => fav.listing_id));
     } catch (error) {
-      errorHandler.logError(new Error(`Error fetching favorites: ${error}`));
-      setFavoriteListings([]);
+      errorHandler.logError(
+        new Error(`[ListingsContext] Error fetching favorites: ${error}`)
+      );
+      setFavoriteListings([]); // Clear favorites on error
     }
   }, [user, isSupabaseReady]);
 
-  // Memoized filtering and sorting logic
+  /**
+   * Applies current filters and sorting preferences to the listings.
+   */
   const applyFiltersAndSorting = useCallback(() => {
     try {
-      let filtered = [...listings];
-      console.log("Applying filters to", filtered.length, "listings");
+      let currentFilteredListings = [...listings];
+      console.log(
+        "[ListingsContext] Applying filters to",
+        currentFilteredListings.length,
+        "listings"
+      );
 
-      // Apply search filters first
+      // Apply search query filter
+      if (filters.query) {
+        const searchTerm = filters.query.toLowerCase();
+        currentFilteredListings = currentFilteredListings.filter(
+          (listing) =>
+            listing.title.toLowerCase().includes(searchTerm) ||
+            listing.description.toLowerCase().includes(searchTerm) ||
+            listing.location.city.toLowerCase().includes(searchTerm)
+        );
+      }
+
+      // Apply location filter (city, address, or zip code in text search)
       if (filters.location) {
         const searchTerm = filters.location.toLowerCase();
-        filtered = filtered.filter((listing) => {
+        currentFilteredListings = currentFilteredListings.filter((listing) => {
           const location = listing.location || {};
           return (
             (location.city || "").toLowerCase().includes(searchTerm) ||
@@ -310,34 +373,40 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
 
         if (universityToFilter) {
           const lowercasedUniversity = universityToFilter.toLowerCase();
-          filtered = filtered.filter((listing) => {
-            // Check the host's university
-            const hostUniversityMatch =
-              listing.host?.university?.toLowerCase() === lowercasedUniversity;
+          currentFilteredListings = currentFilteredListings.filter(
+            (listing) => {
+              const hostUniversityMatch =
+                listing.host?.university?.toLowerCase() ===
+                lowercasedUniversity;
 
-            // Check nearby universities, which is the more reliable source
-            const nearbyUniversityMatch =
-              listing.location.nearbyUniversities?.some(
-                (uni) => uni.name.toLowerCase() === lowercasedUniversity
-              ) || false;
+              const nearbyUniversityMatch = (
+                listing.location.nearbyUniversities || []
+              ).some((uni) => uni.name.toLowerCase() === lowercasedUniversity);
 
-            return hostUniversityMatch || nearbyUniversityMatch;
-          });
+              return hostUniversityMatch || nearbyUniversityMatch;
+            }
+          );
         }
       }
 
-      // Fix for maxDistance: Safely check for user.location and coordinates
+      // Max Distance Filter (from user's location)
       if (
         filters.maxDistance !== undefined &&
         user?.location?.coordinates?.lat !== undefined &&
-        user?.location?.coordinates?.lng !== undefined
+        user?.location?.coordinates?.lng !== undefined &&
+        (user.location.coordinates.lat !== 0 ||
+          user.location.coordinates.lng !== 0)
       ) {
-        // user.location.coordinates is now guaranteed to have lat and lng
         const userCoordinates = user.location.coordinates;
-
-        filtered = filtered.filter((listing) => {
-          if (!listing.location?.latitude || !listing.location?.longitude)
-            return false;
+        currentFilteredListings = currentFilteredListings.filter((listing) => {
+          if (
+            !listing.location?.latitude ||
+            !listing.location?.longitude ||
+            (listing.location.latitude === 0 &&
+              listing.location.longitude === 0)
+          ) {
+            return false; // Exclude listings with invalid/zero coordinates
+          }
 
           const distance = calculateDistance(
             userCoordinates.lat,
@@ -349,96 +418,121 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
         });
       }
 
+      // Price Range Filter
       if (filters.priceRange) {
-        filtered = filtered.filter((listing) => {
+        currentFilteredListings = currentFilteredListings.filter((listing) => {
           const price = listing.price || 0;
-          const minPrice = filters.priceRange?.min ?? 0; // Use nullish coalescing for default
-          const maxPrice = filters.priceRange?.max ?? Infinity; // Use nullish coalescing for default
+          const minPrice = filters.priceRange?.min ?? 0;
+          const maxPrice = filters.priceRange?.max ?? Infinity;
           return price >= minPrice && price <= maxPrice;
         });
       }
 
+      // Room Type Filter
       if (filters.roomType && filters.roomType.length > 0) {
-        filtered = filtered.filter((listing) =>
+        currentFilteredListings = currentFilteredListings.filter((listing) =>
           filters.roomType!.includes(listing.roomType)
         );
       }
 
+      // Amenities Filter
       if (filters.amenities && filters.amenities.length > 0) {
-        filtered = filtered.filter((listing) =>
+        currentFilteredListings = currentFilteredListings.filter((listing) =>
           filters.amenities!.every((amenity) =>
             (listing.amenities || []).includes(amenity)
           )
         );
       }
 
-      // Fix for availableFrom: Compare Date objects
+      // Available From (Move-in Date) Filter
       if (filters.availableFrom instanceof Date) {
         // Ensure it's a Date object
-        filtered = filtered.filter(
+        currentFilteredListings = currentFilteredListings.filter(
           (listing) =>
             listing.availableFrom &&
-            listing.availableFrom.getTime() >= filters.availableFrom!.getTime() // Compare Date objects
+            listing.availableFrom.getTime() >= filters.availableFrom!.getTime()
         );
       }
 
-      // Handle moveInDate filter
-      // Now using 'filters.moveInDate' directly as it should be defined in types/index.ts
+      // Move-in Date (string from input) Filter
       if (filters.moveInDate) {
         const filterDate = new Date(filters.moveInDate);
-        filtered = filtered.filter(
+        currentFilteredListings = currentFilteredListings.filter(
           (listing) =>
             listing.availableFrom &&
             listing.availableFrom.getTime() <= filterDate.getTime()
         );
       }
 
-      // Apply user-based filtering if user is logged in
+      // Apply user-based filtering (e.g., exclude own listings) if user is logged in
       if (user) {
-        // Don't show user's own listings
-        filtered = filtered.filter((listing) => listing.hostId !== user.id);
+        currentFilteredListings = currentFilteredListings.filter(
+          (listing) => listing.hostId !== user.id
+        );
 
-        // Apply sorting with user context
-        filtered = MatchingService.sortListings(filtered, sortBy, user);
+        // Apply sorting with user context (relevance, match, distance, etc.)
+        currentFilteredListings = MatchingService.sortListings(
+          currentFilteredListings,
+          sortBy,
+          user
+        );
       } else {
         // Default sorting for non-logged-in users
         switch (sortBy) {
-          case "price-asc": // Changed from "price"
-            filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
+          case "price-asc":
+            currentFilteredListings.sort(
+              (a, b) => (a.price || 0) - (b.price || 0)
+            );
             break;
-          case "price-desc": // Added for price high to low
-            filtered.sort((a, b) => (b.price || 0) - (a.price || 0));
+          case "price-desc":
+            currentFilteredListings.sort(
+              (a, b) => (b.price || 0) - (a.price || 0)
+            );
             break;
           case "newest":
-            filtered.sort((a, b) => {
+            currentFilteredListings.sort((a, b) => {
               const timeA = a.createdAt ? a.createdAt.getTime() : 0;
               const timeB = b.createdAt ? b.createdAt.getTime() : 0;
               return timeB - timeA;
             });
             break;
           default:
-            // Keep current order
+            // Keep current order if no specific sort or user is not logged in
             break;
         }
       }
 
-      console.log("Filtered listings:", filtered.length);
-      setFilteredListings(filtered);
+      console.log(
+        "[ListingsContext] Filtered listings count:",
+        currentFilteredListings.length
+      );
+      setFilteredListings(currentFilteredListings);
     } catch (error) {
-      errorHandler.logError(new Error(`Error applying filters: ${error}`));
-      setFilteredListings(listings);
+      errorHandler.logError(
+        new Error(`[ListingsContext] Error applying filters: ${error}`)
+      );
+      setFilteredListings(listings); // Fallback to all listings on filter error
     }
   }, [listings, filters, sortBy, user]);
 
+  /**
+   * Generates personalized listing recommendations for the current user.
+   */
   const generateRecommendations = useCallback(() => {
     if (!user || listings.length === 0) {
-      console.log("No user or listings for recommendations");
+      console.log(
+        "[ListingsContext] No user or listings to generate recommendations."
+      );
+      setRecommendedListings([]);
       return;
     }
 
     try {
-      console.log("Generating recommendations for user:", user.university);
-      // Ensure relevance and match scores are calculated if they don't exist
+      console.log(
+        "[ListingsContext] Generating recommendations for user:",
+        user.university
+      );
+      // Ensure relevance and match scores are calculated for each listing
       const listingsWithScores = listings.map((listing) => ({
         ...listing,
         matchScore: MatchingService.calculateMatchScore(user, listing),
@@ -447,39 +541,48 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
 
       const recommendations = MatchingService.getRecommendations(
         user,
-        listingsWithScores, // Pass listings with scores
-        6
+        listingsWithScores,
+        6 // Limit to 6 recommendations for display
       );
-      console.log("Generated recommendations:", recommendations.length);
+      console.log(
+        "[ListingsContext] Generated recommendations count:",
+        recommendations.length
+      );
       setRecommendedListings(recommendations);
     } catch (error) {
       errorHandler.logError(
-        new Error(`Error generating recommendations: ${error}`)
+        new Error(
+          `[ListingsContext] Error generating recommendations: ${error}`
+        )
       );
-      setRecommendedListings([]);
+      setRecommendedListings([]); // Clear recommendations on error
     }
   }, [user, listings]);
 
+  /**
+   * Adds a new listing to the database or mock data.
+   */
   const addListing = useCallback(
     async (
       newListing: Omit<Listing, "id" | "createdAt" | "updatedAt" | "host">
     ) => {
-      if (!user) throw new Error("User must be logged in");
+      if (!user) throw new Error("User must be logged in to create a listing.");
 
       try {
         if (!isSupabaseReady) {
-          // Mock add for development
+          console.log("[ListingsContext] Mock add listing for development.");
           const listing: Listing = {
             ...newListing,
             id: Date.now().toString(),
-            host: user,
+            host: user, // Assign current user as host
             createdAt: new Date(),
             updatedAt: new Date(),
           };
-          setListings((prev) => [listing, ...prev]);
+          setListings((prev) => [listing, ...prev]); // Add to beginning of list
           return;
         }
 
+        // Insert new listing into Supabase
         const { error } = await supabase
           .from("listings")
           .insert({
@@ -490,12 +593,10 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
             room_type: newListing.roomType,
             amenities: newListing.amenities,
             images: newListing.images,
-            available_from: newListing.availableFrom
-              .toISOString()
-              .split("T")[0],
-            available_to: newListing.availableTo?.toISOString().split("T")[0],
+            available_from: newListing.availableFrom.toISOString(), // Store as ISO string
+            available_to: newListing.availableTo?.toISOString() || null, // Store as ISO string or null
             max_occupants: newListing.maxOccupants,
-            host_id: user.id,
+            host_id: user.id, // Link to current user's ID
             status: newListing.status,
             preferences: newListing.preferences,
             rules: newListing.rules,
@@ -503,25 +604,30 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
             utilities: newListing.utilities,
           })
           .select()
-          .single();
+          .single(); // Get the inserted row
 
         if (error) throw error;
 
-        await refreshListings();
+        await refreshListings(); // Refresh all listings to include the new one
       } catch (error: any) {
         const errorMessage = error.message || "Failed to create listing";
-        errorHandler.logError(new Error(errorMessage));
+        errorHandler.logError(
+          new Error(`[ListingsContext] Add listing failed: ${errorMessage}`)
+        );
         throw new Error(errorMessage);
       }
     },
     [user, isSupabaseReady, refreshListings]
   );
 
+  /**
+   * Updates an existing listing in the database or mock data.
+   */
   const updateListing = useCallback(
     async (id: string, updates: Partial<Listing>) => {
       try {
         if (!isSupabaseReady) {
-          // Mock update for development
+          console.log("[ListingsContext] Mock update listing for development.");
           setListings((prev) =>
             prev.map((listing) =>
               listing.id === id
@@ -532,6 +638,7 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
           return;
         }
 
+        // Update listing in Supabase
         const { error } = await supabase
           .from("listings")
           .update({
@@ -542,8 +649,8 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
             room_type: updates.roomType,
             amenities: updates.amenities,
             images: updates.images,
-            available_from: updates.availableFrom?.toISOString().split("T")[0],
-            available_to: updates.availableTo?.toISOString().split("T")[0],
+            available_from: updates.availableFrom?.toISOString() || undefined,
+            available_to: updates.availableTo?.toISOString() || null,
             max_occupants: updates.maxOccupants,
             status: updates.status,
             preferences: updates.preferences,
@@ -551,52 +658,70 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
             deposit: updates.deposit,
             utilities: updates.utilities,
           })
-          .eq("id", id);
+          .eq("id", id); // Find by ID
 
         if (error) throw error;
 
-        await refreshListings();
+        await refreshListings(); // Refresh all listings after update
       } catch (error: any) {
         const errorMessage = error.message || "Failed to update listing";
-        errorHandler.logError(new Error(errorMessage));
+        errorHandler.logError(
+          new Error(`[ListingsContext] Update listing failed: ${errorMessage}`)
+        );
         throw new Error(errorMessage);
       }
     },
     [isSupabaseReady, refreshListings]
   );
 
+  /**
+   * Deletes a listing from the database or mock data.
+   */
   const deleteListing = useCallback(
     async (id: string) => {
       try {
         if (!isSupabaseReady) {
-          // Mock delete for development
+          console.log("[ListingsContext] Mock delete listing for development.");
           setListings((prev) => prev.filter((listing) => listing.id !== id));
           return;
         }
 
+        // Delete from Supabase
         const { error } = await supabase.from("listings").delete().eq("id", id);
 
         if (error) throw error;
 
-        await refreshListings();
+        await refreshListings(); // Refresh all listings after deletion
       } catch (error: any) {
         const errorMessage = error.message || "Failed to delete listing";
-        errorHandler.logError(new Error(errorMessage));
+        errorHandler.logError(
+          new Error(`[ListingsContext] Delete listing failed: ${errorMessage}`)
+        );
         throw new Error(errorMessage);
       }
     },
     [isSupabaseReady, refreshListings]
   );
 
+  /**
+   * Toggles a listing as a favorite for the current user.
+   */
   const toggleFavorite = useCallback(
     async (listingId: string) => {
-      if (!user) return;
+      if (!user) {
+        console.warn(
+          "[ListingsContext] User not logged in. Cannot toggle favorite."
+        );
+        return;
+      }
 
       const isFavorite = favoriteListings.includes(listingId);
 
       try {
         if (!isSupabaseReady) {
-          // Mock toggle for development
+          console.log(
+            "[ListingsContext] Mock toggle favorite for development."
+          );
           const updated = isFavorite
             ? favoriteListings.filter((id) => id !== listingId)
             : [...favoriteListings, listingId];
@@ -606,6 +731,7 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
           return;
         }
 
+        // Perform Supabase favorite toggle
         if (isFavorite) {
           const { error } = await supabase
             .from("favorites")
@@ -627,38 +753,43 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
           setFavoriteListings((prev) => [...prev, listingId]);
         }
       } catch (error) {
-        errorHandler.logError(new Error(`Error toggling favorite: ${error}`));
+        errorHandler.logError(
+          new Error(`[ListingsContext] Error toggling favorite: ${error}`)
+        );
       }
     },
     [user, favoriteListings, isSupabaseReady]
   );
 
-  // Effects
+  // Effects for data loading and filtering
   useEffect(() => {
-    refreshListings();
+    refreshListings(); // Initial fetch
   }, [refreshListings]);
 
   useEffect(() => {
     if (user) {
-      fetchFavorites();
+      fetchFavorites(); // Fetch favorites when user changes
+    } else {
+      setFavoriteListings([]); // Clear favorites if user logs out
     }
   }, [user, fetchFavorites]);
 
   useEffect(() => {
-    // Only apply filters when we actually have listings loaded
-    // and when filters or sort order change
+    // Apply filters and sorting whenever listings data, filters, or sort preferences change
     if (listings.length > 0 || !isLoading) {
+      // Only apply if listings are loaded or loading has finished
       performanceMonitor.measureFunction("apply_filters_and_sorting", () => {
         applyFiltersAndSorting();
       });
     }
-  }, [applyFiltersAndSorting, listings.length, isLoading, filters, sortBy]); // Added filters and sortBy to dependencies
+  }, [applyFiltersAndSorting, listings, isLoading, filters, sortBy]); // Added 'listings' to dependencies
 
   useEffect(() => {
+    // Generate recommendations whenever user or listings data changes
     performanceMonitor.measureFunction("generate_recommendations", () => {
       generateRecommendations();
     });
-  }, [generateRecommendations, listings]); // Added listings to dependencies for recommendations
+  }, [generateRecommendations, user, listings]); // Added 'user' and 'listings' to dependencies
 
   // Memoized context value to prevent unnecessary re-renders
   const contextValue = useMemo(

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ImageIcon } from 'lucide-react';
+import React, { useState, useRef, useEffect } from "react";
+import { ImageIcon } from "lucide-react";
 
 interface LazyImageProps {
   src: string;
@@ -13,10 +13,10 @@ interface LazyImageProps {
 const LazyImage: React.FC<LazyImageProps> = ({
   src,
   alt,
-  className = '',
+  className = "",
   placeholder,
   onLoad,
-  onError
+  onError,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isInView, setIsInView] = useState(false);
@@ -57,7 +57,11 @@ const LazyImage: React.FC<LazyImageProps> = ({
       {!isLoaded && !hasError && (
         <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
           {placeholder ? (
-            <img src={placeholder} alt="" className="w-full h-full object-cover opacity-50" />
+            <img
+              src={placeholder}
+              alt=""
+              className="w-full h-full object-cover opacity-50"
+            />
           ) : (
             <ImageIcon className="w-8 h-8 text-gray-400" />
           )}
@@ -80,7 +84,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
           src={src}
           alt={alt}
           className={`w-full h-full object-cover transition-opacity duration-300 ${
-            isLoaded ? 'opacity-100' : 'opacity-0'
+            isLoaded ? "opacity-100" : "opacity-0"
           }`}
           onLoad={handleLoad}
           onError={handleError}

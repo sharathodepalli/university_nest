@@ -17,6 +17,10 @@ export const userLoginSchema = z.object({
   password: z.string().min(1, 'Password required')
 });
 
+export const emailSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
 // Listing validation schemas
 export const listingSchema = z.object({
   title: z.string().min(10, 'Title must be at least 10 characters').max(100, 'Title too long'),

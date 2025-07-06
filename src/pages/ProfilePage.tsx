@@ -10,6 +10,7 @@ import {
   Phone,
   LocateFixed,
   Globe,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useListings } from "../contexts/ListingsContext";
@@ -18,8 +19,6 @@ import ListingCard from "../components/ListingCard";
 import ProfileImageUpload from "../components/ProfileImageUpload";
 import { useNavigate } from "react-router-dom";
 import GeocodingService from "../utils/geocoding";
-// Removed unused imports: calculateDistance, formatDistance
-// import { calculateDistance, formatDistance } from '../utils/haversine';
 
 const ProfilePage: React.FC = () => {
   const { user, logout, updateProfile } = useAuth();
@@ -30,8 +29,12 @@ const ProfilePage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [profileUpdateError, setProfileUpdateError] = useState<string | null>(
+    null
+  ); // New state for profile save errors
 
   // Initialize formData with user's current data
+  // Ensure all fields have a default empty string or appropriate fallback
   const [formData, setFormData] = useState({
     name: user?.name || "",
     bio: user?.bio || "",
@@ -39,16 +42,16 @@ const ProfilePage: React.FC = () => {
     year: user?.year || "",
     phone: user?.phone || "",
     profilePicture: user?.profilePicture || "",
-    // Initialize location fields from user object
     locationAddress: user?.location?.address || "",
     locationCity: user?.location?.city || "",
     locationState: user?.location?.state || "",
     locationCountry: user?.location?.country || "USA",
-    locationLat: user?.location?.coordinates?.lat,
-    locationLng: user?.location?.coordinates?.lng,
+    locationLat: user?.location?.coordinates?.lat, // Can be number | undefined
+    locationLng: user?.location?.coordinates?.lng, // Can be number | undefined
   });
 
   // Effect to update formData if user object changes (e.g., after initial load or a successful update)
+  // This is crucial to ensure the form is populated with the latest user data
   useEffect(() => {
     if (user) {
       setFormData({
@@ -65,8 +68,11 @@ const ProfilePage: React.FC = () => {
         locationLat: user.location?.coordinates?.lat,
         locationLng: user.location?.coordinates?.lng,
       });
+      // Clear any previous errors when user data reloads
+      setProfileUpdateError(null);
+      setLocationError(null);
     }
-  }, [user]);
+  }, [user]); // Depend on the 'user' object from AuthContext
 
   const userListings = listings.filter(
     (listing) => listing.hostId === user?.id
@@ -92,17 +98,18 @@ const ProfilePage: React.FC = () => {
 
   const handleSave = async () => {
     setIsSaving(true);
-    setLocationError(null);
+    setProfileUpdateError(null); // Clear previous save errors
 
     // Construct the location object to pass to updateProfile
+    // Ensure coordinates are always numbers, even if 0
     const updatedLocation = {
-      address: formData.locationAddress, // Now safe as 'address' is in User.location type
+      address: formData.locationAddress,
       city: formData.locationCity,
       state: formData.locationState,
       country: formData.locationCountry,
       coordinates: {
-        lat: formData.locationLat || 0, // Default to 0 if null/undefined
-        lng: formData.locationLng || 0, // Default to 0 if null/undefined
+        lat: formData.locationLat ?? 0, // Use nullish coalescing for safety
+        lng: formData.locationLng ?? 0, // Use nullish coalescing for safety
       },
     };
 
@@ -119,8 +126,9 @@ const ProfilePage: React.FC = () => {
       setIsEditing(false);
     } catch (error: any) {
       console.error("Error updating profile:", error);
-      // More specific error handling could be implemented here
-      setLocationError(error.message || "Failed to update profile.");
+      setProfileUpdateError(
+        error.message || "Failed to update profile. Please try again."
+      );
     } finally {
       setIsSaving(false);
     }
@@ -128,6 +136,7 @@ const ProfilePage: React.FC = () => {
 
   const handleCancel = () => {
     // Reset formData to original user values
+    // Ensure all fields are reset with proper fallbacks
     setFormData({
       name: user?.name || "",
       bio: user?.bio || "",
@@ -135,7 +144,7 @@ const ProfilePage: React.FC = () => {
       year: user?.year || "",
       phone: user?.phone || "",
       profilePicture: user?.profilePicture || "",
-      locationAddress: user?.location?.address || "", // Now safe
+      locationAddress: user?.location?.address || "",
       locationCity: user?.location?.city || "",
       locationState: user?.location?.state || "",
       locationCountry: user?.location?.country || "USA",
@@ -143,6 +152,7 @@ const ProfilePage: React.FC = () => {
       locationLng: user?.location?.coordinates?.lng,
     });
     setIsEditing(false);
+    setProfileUpdateError(null); // Clear errors on cancel
     setLocationError(null);
     setLocationLoading(false);
   };
@@ -150,7 +160,19 @@ const ProfilePage: React.FC = () => {
   const handleGeocodeAddress = async () => {
     setLocationLoading(true);
     setLocationError(null);
+    setProfileUpdateError(null); // Clear profile update error as this is a new action
+
     const fullAddress = `${formData.locationAddress}, ${formData.locationCity}, ${formData.locationState}, ${formData.locationCountry}`;
+    if (
+      !formData.locationAddress ||
+      !formData.locationCity ||
+      !formData.locationState
+    ) {
+      setLocationError("Address, city, and state are required for geocoding.");
+      setLocationLoading(false);
+      return;
+    }
+
     try {
       const result = await GeocodingService.geocodeAddress(fullAddress);
       if (
@@ -158,19 +180,30 @@ const ProfilePage: React.FC = () => {
         typeof result.latitude === "number" &&
         typeof result.longitude === "number"
       ) {
-        // Ensure lat/lng are numbers
         setFormData((prev) => ({
           ...prev,
           locationLat: result.latitude,
           locationLng: result.longitude,
-          locationAddress: result.formattedAddress ?? formData.locationAddress, // Use nullish coalescing
-          // Optionally parse city/state from formatted_address if more accurate
-          // locationCity: ..., locationState: ...,
+          // Update address/city/state from formatted_address for better consistency if geocoding returns a better one
+          locationAddress: result.formattedAddress ?? formData.locationAddress,
+          locationCity:
+            result.formattedAddress?.split(",").slice(-3, -2)[0]?.trim() ||
+            formData.locationCity, // Heuristic: City is usually 3rd from end
+          locationState:
+            result.formattedAddress
+              ?.split(",")
+              .slice(-2, -1)[0]
+              ?.trim()
+              .split(" ")[0] || formData.locationState, // Heuristic: State from 2nd last
+          locationCountry:
+            result.formattedAddress?.split(",").pop()?.trim() ||
+            formData.locationCountry, // Heuristic: Last is country
         }));
-        console.log("Address geocoded:", result);
+        console.log("Address geocoded successfully:", result);
       } else {
         setLocationError(
-          result.error || "Could not find coordinates for this address."
+          result.error ||
+            "Could not find coordinates for this address. Please check and try again."
         );
       }
     } catch (err) {
@@ -184,6 +217,14 @@ const ProfilePage: React.FC = () => {
   const handleGetGeolocation = async () => {
     setLocationLoading(true);
     setLocationError(null);
+    setProfileUpdateError(null); // Clear profile update error as this is a new action
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation not supported by this browser.");
+      setLocationLoading(false);
+      return;
+    }
+
     try {
       const position = await new Promise<GeolocationPosition>(
         (resolve, reject) => {
@@ -211,21 +252,26 @@ const ProfilePage: React.FC = () => {
         reverseGeocodeResult.formattedAddress
       ) {
         address = reverseGeocodeResult.formattedAddress;
-        const addressComponents = reverseGeocodeResult.formattedAddress
+        const addressParts = reverseGeocodeResult.formattedAddress
           .split(",")
           .map((s) => s.trim());
-        // Simple heuristic for city/state/country from formatted string, can be improved
-        // Example: If formattedAddress is "123 Main St, Anytown, CA 90210, USA"
-        if (addressComponents.length >= 4) {
-          // Requires at least 4 parts: street, city, state, zip/country
-          city = addressComponents[addressComponents.length - 3]; // Anytown
-          state = addressComponents[addressComponents.length - 2]; // CA 90210
-          country = addressComponents[addressComponents.length - 1]; // USA
-        } else if (addressComponents.length >= 3) {
-          // Less precise, maybe just city, state, country
-          city = addressComponents[0];
-          state = addressComponents[1];
-          country = addressComponents[2];
+        if (addressParts.length >= 4) {
+          // e.g., Street, City, State ZIP, Country
+          address = addressParts[0]; // Just the street part
+          city = addressParts[addressParts.length - 3];
+          state = addressParts[addressParts.length - 2].split(" ")[0];
+          country = addressParts[addressParts.length - 1];
+        } else if (addressParts.length >= 3) {
+          // e.g., City, State, Country
+          address = addressParts[0]; // Take first part as general address if full not available
+          city = addressParts[0];
+          state = addressParts[1];
+          country = addressParts[2];
+        } else if (addressParts.length === 2) {
+          // just city, state
+          address = addressParts[0];
+          city = addressParts[0];
+          state = addressParts[1];
         }
       }
 
@@ -233,7 +279,7 @@ const ProfilePage: React.FC = () => {
         ...prev,
         locationLat: latitude,
         locationLng: longitude,
-        locationAddress: address || "", // Use the full address string from reverse geocoding, or empty
+        locationAddress: address || "",
         locationCity: city,
         locationState: state,
         locationCountry: country,
@@ -256,12 +302,17 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  if (!user) {
+  // If user data is not loaded yet or explicitly null, show loading/login message
+  // This ensures the page doesn't try to render user-specific data before it's available
+  // The 'user' object from AuthContext will be null initially while isLoading is true.
+  // Once isLoading becomes false, 'user' will either be null (not logged in) or the user object.
+  if (!user && !locationLoading && !isSaving) {
+    // Exclude transient loading states
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Please log in
+            Please log in to view your profile
           </h2>
           <button
             onClick={() => navigate("/login")}
@@ -269,6 +320,20 @@ const ProfilePage: React.FC = () => {
           >
             Go to Login
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If AuthContext is still loading the user, show a loading spinner
+  // This covers the initial app load and auth state changes
+  if (!user && (locationLoading || isSaving)) {
+    // These specific flags are for actions on this page
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile data...</p>
         </div>
       </div>
     );
@@ -287,10 +352,10 @@ const ProfilePage: React.FC = () => {
               <div className="relative">
                 <ProfileImageUpload
                   currentImage={
-                    isEditing ? formData.profilePicture : user.profilePicture
-                  }
+                    isEditing ? formData.profilePicture : user?.profilePicture
+                  } // Safely access user?.profilePicture
                   onImageChange={handleProfileImageChange}
-                  userName={user.name}
+                  userName={user?.name || "User"} // Safely access user?.name
                   disabled={!isEditing}
                   size="lg"
                 />
@@ -310,20 +375,20 @@ const ProfilePage: React.FC = () => {
                       />
                     ) : (
                       <h1 className="text-2xl font-bold text-gray-900">
-                        {user.name}
+                        {user?.name || "Guest User"}
                       </h1>
                     )}
 
                     <div className="flex items-center space-x-4 mt-2 text-gray-600">
                       <div className="flex items-center space-x-1">
                         <GraduationCap className="w-4 h-4" />
-                        <span>{user.university}</span>
+                        <span>{user?.university || "N/A"}</span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <Calendar className="w-4 h-4" />
-                        <span>{user.year}</span>
+                        <span>{user?.year || "N/A"}</span>
                       </div>
-                      {user.verified && (
+                      {user?.verified && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           ✓ Verified
                         </span>
@@ -336,7 +401,7 @@ const ProfilePage: React.FC = () => {
                       <>
                         <button
                           onClick={handleSave}
-                          disabled={isSaving || locationLoading} // Disable save while location is loading
+                          disabled={isSaving || locationLoading}
                           className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                         >
                           <Save className="w-4 h-4" />
@@ -362,6 +427,12 @@ const ProfilePage: React.FC = () => {
                     )}
                   </div>
                 </div>
+                {profileUpdateError && (
+                  <div className="flex items-center space-x-2 text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg mt-3">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{profileUpdateError}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -386,7 +457,7 @@ const ProfilePage: React.FC = () => {
                 />
               ) : (
                 <p className="text-gray-700">
-                  {user.bio || "No bio added yet."}
+                  {user?.bio || "No bio added yet."}
                 </p>
               )}
             </div>
@@ -399,7 +470,7 @@ const ProfilePage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
                   <Mail className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-700">{user.email}</span>
+                  <span className="text-gray-700">{user?.email || "N/A"}</span>
                 </div>
                 {isEditing ? (
                   <div className="flex items-center space-x-3">
@@ -413,12 +484,18 @@ const ProfilePage: React.FC = () => {
                       placeholder="Phone number"
                     />
                   </div>
-                ) : user.phone ? (
+                ) : user?.phone ? (
                   <div className="flex items-center space-x-3">
                     <Phone className="w-4 h-4 text-gray-400" />
                     <span className="text-gray-700">{user.phone}</span>
                   </div>
-                ) : null}
+                ) : (
+                  // Corrected ternary else branch
+                  <div className="flex items-center space-x-3 text-gray-500">
+                    <Phone className="w-4 h-4" />
+                    <span>No phone added.</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -470,11 +547,11 @@ const ProfilePage: React.FC = () => {
                   <>
                     <div className="flex items-center space-x-3">
                       <GraduationCap className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-700">{user.university}</span>
+                      <span>{user?.university || "N/A"}</span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <Calendar className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-700">{user.year}</span>
+                      <span>{user?.year || "N/A"}</span>
                     </div>
                   </>
                 )}
@@ -590,22 +667,28 @@ const ProfilePage: React.FC = () => {
                     <MapPin className="w-4 h-4 text-gray-400 mt-1" />
                     <div>
                       <p className="text-gray-700">
-                        {user.location?.address || "N/A"}
+                        {user?.location?.address || "N/A"}
                       </p>
                       <p className="text-gray-700">
-                        {user.location?.city || "N/A"},{" "}
-                        {user.location?.state || "N/A"},{" "}
-                        {user.location?.country || "N/A"}
+                        {user?.location?.city || "N/A"},{" "}
+                        {user?.location?.state || "N/A"},{" "}
+                        {user?.location?.country || "N/A"}
                       </p>
                     </div>
                   </div>
-                  {user.location?.coordinates?.lat &&
-                    user.location?.coordinates?.lng && (
+                  {user?.location?.coordinates?.lat &&
+                    user?.location?.coordinates?.lng && (
                       <p className="text-sm text-gray-500">
                         (Lat: {user.location.coordinates.lat.toFixed(4)}, Lng:{" "}
                         {user.location.coordinates.lng.toFixed(4)})
                       </p>
                     )}
+                  {!user?.location?.address && !user?.location?.city && (
+                    <p className="text-sm text-gray-500">
+                      No location set. Edit profile to add your location for
+                      personalized results!
+                    </p>
+                  )}
                 </div>
               )}
             </div>
