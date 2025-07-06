@@ -11,12 +11,12 @@ export interface Database {
           phone: string | null;
           verified: boolean;
           profile_picture: string | null;
-          preferences: any;
+          preferences: any; // jsonb
           created_at: string;
           updated_at: string;
           email?: string | null;
-          location: any | null;
-          matchingPreferences: any | null; // ADDED THIS LINE
+          location: any | null; // ADDED: jsonb for user location
+          matchingPreferences: any | null; // ADDED: jsonb for user matching preferences
         };
         Insert: {
           id: string;
@@ -32,7 +32,7 @@ export interface Database {
           updated_at?: string;
           email?: string | null;
           location?: any | null;
-          matchingPreferences?: any | null; // ADDED THIS LINE
+          matchingPreferences?: any | null;
         };
         Update: {
           id?: string;
@@ -48,7 +48,7 @@ export interface Database {
           updated_at?: string;
           email?: string | null;
           location?: any | null;
-          matchingPreferences?: any | null; // ADDED THIS LINE
+          matchingPreferences?: any | null;
         };
       };
       listings: {
@@ -57,7 +57,7 @@ export interface Database {
           title: string;
           description: string;
           price: number;
-          location: any;
+          location: any; // jsonb
           room_type: 'single' | 'shared' | 'studio' | 'apartment';
           amenities: string[];
           images: string[];
@@ -66,10 +66,10 @@ export interface Database {
           max_occupants: number;
           host_id: string;
           status: 'active' | 'inactive' | 'rented';
-          preferences: any;
+          preferences: any; // jsonb
           rules: string[];
           deposit: number | null;
-          utilities: any;
+          utilities: any; // jsonb
           created_at: string;
           updated_at: string;
         };

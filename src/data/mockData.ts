@@ -22,7 +22,7 @@ export const mockUsers: User[] = [
       preferredRoomTypes: ['single', 'studio'],
       preferredAmenities: ['Wi-Fi', 'Laundry', 'Kitchen']
     },
-    // CORRECTED: Explicitly map RealAddress to User.location interface
+    // CORRECTED: Manually construct location object to match User['location'] type
     location: {
       address: RealAddressService.REAL_UNIVERSITIES['University of California, Berkeley'].formattedAddress,
       city: RealAddressService.REAL_UNIVERSITIES['University of California, Berkeley'].city,

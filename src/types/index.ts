@@ -19,7 +19,7 @@ export interface User {
     preferredAmenities?: string[];
   };
   location?: {
-    address: string; // ADDED THIS LINE
+    address: string; // ADDED: Required for User.location
     city: string;
     state: string;
     country: string;
@@ -89,12 +89,12 @@ export interface SearchFilters {
   query?: string;
   location?: string;
   university?: string | { custom: string };
-  maxDistance?: number;
+  maxDistance?: number; // ADDED: Max distance filter for search
   priceRange?: { min?: number; max?: number };
   roomType?: string[];
   amenities?: string[];
-  moveInDate?: string;
-  availableFrom?: Date;
+  moveInDate?: string; // ADDED: For specific move-in date filtering
+  availableFrom?: Date; // Corrected to Date type
   sortBy?: 'relevance' | 'price' | 'date';
 }
 

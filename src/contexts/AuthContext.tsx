@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
-import { User } from "../types"; // Assuming User type is correct
+import { User } from "../types";
 import GeocodingService from "../utils/geocoding";
 import { Database } from "../types/database";
 
@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    */
   const fetchUserGeolocation = async (currentUserId: string) => {
     if (!navigator.geolocation) {
-      console.warn("Geolocation not supported by this browser.");
+      console.warn("[AuthContext] Geolocation not supported by this browser.");
       return;
     }
 
@@ -92,9 +92,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Attempt to parse common components from formatted address string
         // This heuristic might need refinement based on expected address formats
         if (addressComponents.length >= 3) {
-          city = addressComponents[addressComponents.length - 3]; // e.g., "Cincinnati" from "123 Main St, Cincinnati, OH, USA"
-          state = addressComponents[addressComponents.length - 2].split(" ")[0]; // e.g., "OH" from "OH 45202"
-          country = addressComponents[addressComponents.length - 1]; // e.g., "USA"
+          city = addressComponents[addressComponents.length - 3];
+          state = addressComponents[addressComponents.length - 2].split(" ")[0];
+          country = addressComponents[addressComponents.length - 1];
         } else if (addressComponents.length === 2) {
           city = addressComponents[0];
           state = addressComponents[1];
