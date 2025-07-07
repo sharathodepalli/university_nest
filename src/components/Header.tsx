@@ -92,12 +92,26 @@ const Header: React.FC = () => {
                     to="/profile"
                     className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center relative">
                       <User className="w-4 h-4 text-white" />
+                      {user.verified && (
+                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full">
+                          <div className="w-full h-full flex items-center justify-center">
+                            <div className="w-1 h-1 bg-white rounded-full"></div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <span className="text-sm font-medium text-gray-700 hidden sm:block">
-                      {user.name}
-                    </span>
+                    <div className="hidden sm:block">
+                      <span className="text-sm font-medium text-gray-700 block">
+                        {user.name}
+                      </span>
+                      {!user.verified && (
+                        <span className="text-xs text-yellow-600">
+                          Get Verified
+                        </span>
+                      )}
+                    </div>
                   </Link>
                   <button
                     onClick={logout}

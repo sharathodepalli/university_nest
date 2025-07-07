@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useListings } from "../contexts/ListingsContext";
+import { usePrivacy } from "../hooks/usePrivacy";
 import { universityOptions } from "../data/mockData";
 import ListingCard from "../components/ListingCard";
 import ProfileImageUpload from "../components/ProfileImageUpload";
@@ -23,6 +24,7 @@ import GeocodingService from "../utils/geocoding";
 const ProfilePage: React.FC = () => {
   const { user, logout, updateProfile } = useAuth();
   const { listings } = useListings();
+  const { shouldShowEmail, shouldShowPhone } = usePrivacy();
   const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -388,10 +390,17 @@ const ProfilePage: React.FC = () => {
                         <Calendar className="w-4 h-4" />
                         <span>{user?.year || "N/A"}</span>
                       </div>
-                      {user?.verified && (
+                      {user?.verified ? (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           ✓ Verified
                         </span>
+                      ) : (
+                        <button
+                          onClick={() => navigate("/verification")}
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors"
+                        >
+                          ○ Get Verified
+                        </button>
                       )}
                     </div>
                   </div>
@@ -468,10 +477,22 @@ const ProfilePage: React.FC = () => {
                 Contact Information
               </h2>
               <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <Mail className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-700">{user?.email || "N/A"}</span>
-                </div>
+                {/* Email - respect privacy settings */}
+                {shouldShowEmail() ? (
+                  <div className="flex items-center space-x-3">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-700">
+                      {user?.email || "N/A"}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-3 text-gray-500">
+                    <Mail className="w-4 h-4" />
+                    <span>Email hidden by privacy settings</span>
+                  </div>
+                )}
+
+                {/* Phone - respect privacy settings */}
                 {isEditing ? (
                   <div className="flex items-center space-x-3">
                     <Phone className="w-4 h-4 text-gray-400" />
@@ -484,13 +505,17 @@ const ProfilePage: React.FC = () => {
                       placeholder="Phone number"
                     />
                   </div>
-                ) : user?.phone ? (
+                ) : shouldShowPhone() && user?.phone ? (
                   <div className="flex items-center space-x-3">
                     <Phone className="w-4 h-4 text-gray-400" />
                     <span className="text-gray-700">{user.phone}</span>
                   </div>
+                ) : !shouldShowPhone() && user?.phone ? (
+                  <div className="flex items-center space-x-3 text-gray-500">
+                    <Phone className="w-4 h-4" />
+                    <span>Phone hidden by privacy settings</span>
+                  </div>
                 ) : (
-                  // Corrected ternary else branch
                   <div className="flex items-center space-x-3 text-gray-500">
                     <Phone className="w-4 h-4" />
                     <span>No phone added.</span>
@@ -699,10 +724,35 @@ const ProfilePage: React.FC = () => {
                 Account
               </h2>
               <div className="space-y-3">
-                <button className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                <button
+                  onClick={() => navigate("/verification")}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between ${
+                    user?.verified
+                      ? "text-green-700 hover:bg-green-50"
+                      : "text-yellow-700 hover:bg-yellow-50"
+                  }`}
+                >
+                  <span>Account Verification</span>
+                  {user?.verified ? (
+                    <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                      ✓ Verified
+                    </span>
+                  ) : (
+                    <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">
+                      Get Verified
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => navigate("/change-password")}
+                  className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                >
                   Change Password
                 </button>
-                <button className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
+                <button
+                  onClick={() => navigate("/privacy-settings")}
+                  className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                >
                   Privacy Settings
                 </button>
                 <button

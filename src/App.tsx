@@ -22,6 +22,13 @@ import ProfilePage from "./pages/ProfilePage";
 import RealTimeTest from "./components/RealTimeTest";
 import UpdatePasswordPage from "./pages/UpdatePasswordPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
+import PrivacySettingsPage from "./pages/PrivacySettingsPage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import VerificationPage from "./pages/VerificationPage";
+import VerificationTestPage from "./pages/VerificationTestPage";
+import PrivacyDebugger from "./components/PrivacyDebugger";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -138,6 +145,70 @@ const AppContent: React.FC = () => {
               }
             />
             <Route
+              path="/reset-password"
+              element={
+                <PublicRoute>
+                  <ErrorBoundary>
+                    <UpdatePasswordPage />
+                  </ErrorBoundary>
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/terms"
+              element={
+                <ErrorBoundary>
+                  <TermsPage />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/privacy"
+              element={
+                <ErrorBoundary>
+                  <PrivacyPage />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/change-password"
+              element={
+                <ProtectedRoute>
+                  <ErrorBoundary>
+                    <ChangePasswordPage />
+                  </ErrorBoundary>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/privacy-settings"
+              element={
+                <ProtectedRoute>
+                  <ErrorBoundary>
+                    <PrivacySettingsPage />
+                  </ErrorBoundary>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/verification"
+              element={
+                <ProtectedRoute>
+                  <ErrorBoundary>
+                    <VerificationPage />
+                  </ErrorBoundary>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/verification-test"
+              element={
+                <ErrorBoundary>
+                  <VerificationTestPage />
+                </ErrorBoundary>
+              }
+            />
+            <Route
               path="/create"
               element={
                 <ProtectedRoute>
@@ -178,7 +249,7 @@ const AppContent: React.FC = () => {
               }
             />
             <Route
-              path="/realtime-test"
+              path="/test-realtime"
               element={
                 <ProtectedRoute>
                   <ErrorBoundary>
@@ -191,6 +262,9 @@ const AppContent: React.FC = () => {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+
+        {/* Privacy Debugger - only shows in development */}
+        <PrivacyDebugger />
       </div>
     </Router>
   );

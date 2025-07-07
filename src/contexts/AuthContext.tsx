@@ -8,7 +8,6 @@ import React, {
 import { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { User } from "../types";
-import GeocodingService from "../utils/geocoding";
 import { Database } from "../types/database";
 
 interface AuthContextType {
@@ -663,6 +662,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           preferences: updates.preferences,
           location: updates.location,
           matchingPreferences: updates.matchingPreferences,
+          verified: updates.verified,
         };
 
       const { error } = await supabase

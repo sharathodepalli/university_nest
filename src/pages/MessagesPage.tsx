@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { Send, Search, MoreVertical, ArrowLeft } from "lucide-react";
+import {
+  Send,
+  Search,
+  MoreVertical,
+  ArrowLeft,
+  Check,
+  CheckCheck,
+  Clock,
+} from "lucide-react";
 import { useMessaging } from "../contexts/MessagingContext";
 import { useAuth } from "../contexts/AuthContext";
 import { format, isToday, isYesterday } from "date-fns";
@@ -13,13 +21,16 @@ const MessagesPage: React.FC = () => {
     setActiveConversation,
     sendMessage,
     markAsRead,
+    isLoading,
   } = useMessaging();
   const location = useLocation();
 
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isMobileView, setIsMobileView] = useState(false); // Manages visibility of chat list vs active chat
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     // Handle active conversation from navigation state (e.g., when routed from ListingDetailPage)
@@ -33,21 +44,40 @@ const MessagesPage: React.FC = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [activeConversation?.messages]); // Trigger scroll on messages change
+  }, [activeConversation?.messages]);
 
   useEffect(() => {
     // Mark conversation as read when it becomes the active conversation
     if (activeConversation) {
       markAsRead(activeConversation.id);
+      // Auto-focus message input when conversation becomes active
+      if (messageInputRef.current) {
+        messageInputRef.current.focus();
+      }
     }
-  }, [activeConversation, markAsRead]); // Trigger markAsRead when activeConversation changes
+  }, [activeConversation, markAsRead]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim() || !activeConversation) return;
+    if (!messageText.trim() || !activeConversation || isSending) return;
 
-    sendMessage(activeConversation.id, messageText.trim());
-    setMessageText(""); // Clear input after sending
+    const messageToSend = messageText.trim();
+    setMessageText(""); // Clear input immediately for better UX
+    setIsSending(true);
+
+    try {
+      await sendMessage(activeConversation.id, messageToSend);
+      // Keep focus on input for continuous messaging
+      if (messageInputRef.current) {
+        messageInputRef.current.focus();
+      }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      // Restore message text on error
+      setMessageText(messageToSend);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const formatMessageTime = (date: Date) => {
@@ -99,7 +129,20 @@ const MessagesPage: React.FC = () => {
 
         {/* Conversations List */}
         <div className="flex-1 overflow-y-auto">
-          {filteredConversations.length === 0 ? (
+          {isLoading ? (
+            <div className="p-4 space-y-4">
+              {/* Loading skeleton */}
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-start space-x-3 p-4">
+                  <div className="w-12 h-12 bg-gray-200 rounded-full animate-pulse"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredConversations.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
               <p>No conversations yet</p>
               <p className="text-sm mt-1">
@@ -128,18 +171,35 @@ const MessagesPage: React.FC = () => {
                     aria-label={`Conversation with ${otherUser?.name} about ${conversation.listing.title}`}
                   >
                     <div className="flex items-start space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-white text-sm font-medium">
-                          {otherUser?.name.charAt(0) || "?"}
-                        </span>
+                      <div className="relative">
+                        <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-white text-sm font-medium">
+                            {otherUser?.name.charAt(0) || "?"}
+                          </span>
+                        </div>
+                        {conversation.unreadCount > 0 && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                            <span className="text-white text-xs font-medium">
+                              {conversation.unreadCount > 9
+                                ? "9+"
+                                : conversation.unreadCount}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <h3 className="text-sm font-medium text-gray-900 truncate">
+                          <h3
+                            className={`text-sm font-medium truncate ${
+                              conversation.unreadCount > 0
+                                ? "text-gray-900"
+                                : "text-gray-700"
+                            }`}
+                          >
                             {otherUser?.name || "Unknown User"}
                           </h3>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 flex-shrink-0">
                             {conversation.lastMessage
                               ? formatMessageTime(
                                   conversation.lastMessage.timestamp
@@ -148,22 +208,25 @@ const MessagesPage: React.FC = () => {
                           </span>
                         </div>
 
-                        <p className="text-xs text-gray-600 mb-1 truncate">
+                        <p className="text-xs text-blue-600 mb-1 truncate font-medium">
                           {conversation.listing.title}
                         </p>
 
-                        <p className="text-sm text-gray-600 truncate">
-                          {conversation.lastMessage?.content ||
-                            "No messages yet."}
-                        </p>
-
-                        {conversation.unreadCount > 0 && (
-                          <div className="mt-2">
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {conversation.unreadCount} new
-                            </span>
-                          </div>
-                        )}
+                        <div className="flex items-center justify-between">
+                          <p
+                            className={`text-sm truncate flex-1 ${
+                              conversation.unreadCount > 0
+                                ? "text-gray-900 font-medium"
+                                : "text-gray-600"
+                            }`}
+                          >
+                            {conversation.lastMessage?.content ||
+                              "No messages yet."}
+                          </p>
+                          {conversation.unreadCount > 0 && (
+                            <div className="ml-2 w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -221,59 +284,140 @@ const MessagesPage: React.FC = () => {
             </div>
 
             {/* Messages Display */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {activeConversation.messages.map((message) => {
-                const isOwn = message.senderId === user?.id;
-
-                return (
-                  <div
-                    key={message.id}
-                    className={`flex ${
-                      isOwn ? "justify-end" : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                        isOwn
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-200 text-gray-900"
-                      }`}
-                    >
-                      <p className="text-sm">{message.content}</p>
-                      <p
-                        className={`text-xs mt-1 ${
-                          isOwn ? "text-blue-100" : "text-gray-500"
-                        }`}
-                      >
-                        {format(message.timestamp, "HH:mm")}
-                      </p>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+              {activeConversation.messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-center">
+                  <div>
+                    <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Send className="w-8 h-8 text-gray-400" />
                     </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Start the conversation
+                    </h3>
+                    <p className="text-gray-600">
+                      Send a message to get the conversation started
+                    </p>
                   </div>
-                );
-              })}
-              <div ref={messagesEndRef} /> {/* Scroll target */}
+                </div>
+              ) : (
+                activeConversation.messages.map((message, index) => {
+                  const isOwn = message.senderId === user?.id;
+                  const prevMessage = activeConversation.messages[index - 1];
+                  const showTimestamp =
+                    !prevMessage ||
+                    message.timestamp.getTime() -
+                      prevMessage.timestamp.getTime() >
+                      5 * 60 * 1000; // 5 minutes
+
+                  return (
+                    <div key={message.id}>
+                      {showTimestamp && (
+                        <div className="flex justify-center mb-4">
+                          <span className="text-xs text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm">
+                            {isToday(message.timestamp)
+                              ? format(message.timestamp, "HH:mm")
+                              : isYesterday(message.timestamp)
+                              ? `Yesterday ${format(
+                                  message.timestamp,
+                                  "HH:mm"
+                                )}`
+                              : format(message.timestamp, "MMM d, HH:mm")}
+                          </span>
+                        </div>
+                      )}
+
+                      <div
+                        className={`flex ${
+                          isOwn ? "justify-end" : "justify-start"
+                        } mb-2`}
+                      >
+                        <div
+                          className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${
+                            isOwn
+                              ? "bg-blue-600 text-white"
+                              : "bg-white text-gray-900 border border-gray-200"
+                          }`}
+                        >
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                            {message.content}
+                          </p>
+                          <div
+                            className={`flex items-center justify-end mt-1 space-x-1 ${
+                              isOwn ? "text-blue-100" : "text-gray-500"
+                            }`}
+                          >
+                            <span className="text-xs">
+                              {format(message.timestamp, "HH:mm")}
+                            </span>
+                            {isOwn && (
+                              <div className="flex items-center">
+                                {message.read ? (
+                                  <CheckCheck className="w-3 h-3" />
+                                ) : (
+                                  <Check className="w-3 h-3" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Message Input */}
             <div className="bg-white border-t border-gray-200 p-4">
-              <form onSubmit={handleSendMessage} className="flex space-x-3">
-                <input
-                  type="text"
+              <form
+                onSubmit={handleSendMessage}
+                className="flex items-end space-x-3"
+              >
+                <textarea
+                  ref={messageInputRef}
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   placeholder="Type a message..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={isSending}
+                  rows={1}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none min-h-[48px] max-h-32 overflow-y-auto"
                   aria-label="Message input"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage(e);
+                    }
+                  }}
+                  onInput={(e) => {
+                    // Auto-resize textarea based on content
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = "auto";
+                    target.style.height = `${Math.min(
+                      target.scrollHeight,
+                      128
+                    )}px`;
+                  }}
                 />
                 <button
                   type="submit"
-                  disabled={!messageText.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!messageText.trim() || isSending}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[60px] flex-shrink-0"
                   aria-label="Send message"
                 >
-                  <Send className="w-4 h-4" />
+                  {isSending ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                 </button>
               </form>
+              {messageText.trim() && (
+                <div className="mt-2 text-xs text-gray-500 flex items-center space-x-1">
+                  <Clock className="w-3 h-3" />
+                  <span>Press Enter to send, Shift+Enter for new line</span>
+                </div>
+              )}
             </div>
           </>
         ) : (

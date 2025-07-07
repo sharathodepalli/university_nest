@@ -290,12 +290,19 @@ const ListingCard: React.FC<ListingCardProps> = ({
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p
-                className="text-sm font-medium text-gray-900 truncate"
-                title={listing.host?.name}
-              >
-                {listing.host?.name || "Unknown Host"}
-              </p>
+              <div className="flex items-center space-x-2">
+                <p
+                  className="text-sm font-medium text-gray-900 truncate"
+                  title={listing.host?.name}
+                >
+                  {listing.host?.name || "Unknown Host"}
+                </p>
+                {listing.host?.verified && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 flex-shrink-0">
+                    ✓
+                  </span>
+                )}
+              </div>
               <p
                 className="text-xs text-gray-500 truncate"
                 title={hostUniversityDisplay}

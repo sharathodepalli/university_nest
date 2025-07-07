@@ -23,6 +23,10 @@ import {
 import { useListings } from "../contexts/ListingsContext";
 import { useMessaging } from "../contexts/MessagingContext";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  getUserPrivacySettings,
+  canUserSendMessage,
+} from "../hooks/usePrivacy";
 import { format } from "date-fns";
 import { calculateDistance, formatDistance } from "../utils/haversine";
 
@@ -82,6 +86,23 @@ const ListingDetailPage: React.FC = () => {
     }
 
     if (isOwner) return;
+
+    // Check if host allows messages based on their privacy settings
+    const canMessage = canUserSendMessage(
+      user?.verified || false,
+      listing.host.id
+    );
+
+    if (!canMessage) {
+      // Get host settings to show appropriate message
+      const hostSettings = getUserPrivacySettings(listing.host.id);
+      alert(
+        hostSettings.allowMessages === "verified"
+          ? "This host only accepts messages from verified users."
+          : "This host has disabled direct messages."
+      );
+      return;
+    }
 
     try {
       const conversation = await createConversation(listing, listing.host);
@@ -416,13 +437,47 @@ const ListingDetailPage: React.FC = () => {
 
               {!isOwner && (
                 <div className="space-y-3">
-                  <button
-                    onClick={handleContactHost}
-                    className="w-full flex items-center justify-center space-x-2 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Message Host</span>
-                  </button>
+                  {(() => {
+                    // Check host's messaging privacy settings
+                    const hostSettings = getUserPrivacySettings(
+                      listing.host.id
+                    );
+                    const canMessage = canUserSendMessage(
+                      user?.verified || false,
+                      listing.host.id
+                    );
+
+                    return (
+                      <>
+                        <button
+                          onClick={handleContactHost}
+                          disabled={!canMessage}
+                          className={`w-full flex items-center justify-center space-x-2 py-3 rounded-lg transition-colors ${
+                            canMessage
+                              ? "bg-blue-600 text-white hover:bg-blue-700"
+                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          }`}
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span>
+                            {canMessage
+                              ? "Message Host"
+                              : hostSettings.allowMessages === "verified"
+                              ? "Host accepts verified users only"
+                              : "Messaging disabled"}
+                          </span>
+                        </button>
+
+                        {!canMessage && (
+                          <p className="text-xs text-gray-500 text-center">
+                            {hostSettings.allowMessages === "verified"
+                              ? "Get verified to message this host"
+                              : "Host has disabled direct messages"}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   <button
                     onClick={() => setShowContactModal(true)}
@@ -510,18 +565,68 @@ const ListingDetailPage: React.FC = () => {
               Contact Information
             </h3>
             <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <Mail className="w-5 h-5 text-gray-400" />
-                <span className="text-gray-700">
-                  {listing.host.email || "Email not available"}
-                </span>
-              </div>
-              {listing.host.phone && (
-                <div className="flex items-center space-x-3">
-                  <Phone className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-700">{listing.host.phone}</span>
-                </div>
-              )}
+              {(() => {
+                // Get filtered host data based on their privacy settings
+                const hostSettings = getUserPrivacySettings(listing.host.id);
+
+                const showEmail = hostSettings.showEmail;
+                const showPhone = hostSettings.showPhone;
+                const allowMessages = canUserSendMessage(
+                  user?.verified || false,
+                  listing.host.id
+                );
+
+                return (
+                  <>
+                    {/* Email display with privacy control */}
+                    {showEmail ? (
+                      <div className="flex items-center space-x-3">
+                        <Mail className="w-5 h-5 text-gray-400" />
+                        <span className="text-gray-700">
+                          {listing.host.email || "Email not available"}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-3 text-gray-500">
+                        <Mail className="w-5 h-5" />
+                        <span>Email hidden by host's privacy settings</span>
+                      </div>
+                    )}
+
+                    {/* Phone display with privacy control */}
+                    {showPhone && listing.host.phone ? (
+                      <div className="flex items-center space-x-3">
+                        <Phone className="w-5 h-5 text-gray-400" />
+                        <span className="text-gray-700">
+                          {listing.host.phone}
+                        </span>
+                      </div>
+                    ) : listing.host.phone && !showPhone ? (
+                      <div className="flex items-center space-x-3 text-gray-500">
+                        <Phone className="w-5 h-5" />
+                        <span>Phone hidden by host's privacy settings</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-3 text-gray-500">
+                        <Phone className="w-5 h-5" />
+                        <span>No phone number available</span>
+                      </div>
+                    )}
+
+                    {/* Messaging availability */}
+                    {!allowMessages && (
+                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-800">
+                          <MessageCircle className="w-4 h-4 inline mr-1" />
+                          {hostSettings.allowMessages === "verified"
+                            ? "Host only accepts messages from verified users"
+                            : "Host has disabled direct messages"}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             <div className="flex justify-end space-x-3 mt-6">
               <button

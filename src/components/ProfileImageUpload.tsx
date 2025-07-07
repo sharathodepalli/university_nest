@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { Camera, Upload, Loader2 } from "lucide-react"; // Removed User import
+import React, { useState, useRef, useEffect } from "react";
+import { Camera, Upload, Loader2 } from "lucide-react";
 
 interface ProfileImageUploadProps {
   currentImage?: string;
@@ -18,7 +18,22 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Cleanup blob URLs when component unmounts or image changes
+  useEffect(() => {
+    return () => {
+      if (currentImage && currentImage.startsWith("blob:")) {
+        URL.revokeObjectURL(currentImage);
+      }
+    };
+  }, [currentImage]);
+
+  // Reset image error when currentImage changes
+  useEffect(() => {
+    setImageError(false);
+  }, [currentImage]);
 
   const sizeClasses = {
     sm: "w-16 h-16",
@@ -103,11 +118,16 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
             dragOver ? "ring-2 ring-blue-500" : ""
           } ${uploading ? "opacity-50" : ""}`}
         >
-          {currentImage ? (
+          {currentImage && !imageError ? (
             <img
               src={currentImage}
               alt={userName}
               className="w-full h-full object-cover"
+              onError={() => {
+                console.warn("Failed to load profile image:", currentImage);
+                setImageError(true);
+              }}
+              onLoad={() => setImageError(false)}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-blue-500 to-teal-500 flex items-center justify-center">
