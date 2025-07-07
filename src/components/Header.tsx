@@ -13,9 +13,11 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useMessaging } from "../contexts/MessagingContext";
 
 const Header: React.FC = () => {
   const { user, logout, isSupabaseReady } = useAuth();
+  const { unreadCount } = useMessaging();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -59,11 +61,12 @@ const Header: React.FC = () => {
             <nav className="hidden md:flex space-x-8">
               {navItems.map((item) => {
                 const Icon = item.icon;
+                const showBadge = item.path === "/messages" && unreadCount > 0;
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors ${
+                    className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors relative ${
                       isActive(item.path)
                         ? "text-blue-600 bg-blue-50"
                         : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -71,6 +74,11 @@ const Header: React.FC = () => {
                   >
                     <Icon className="w-4 h-4" />
                     <span className="text-sm font-medium">{item.label}</span>
+                    {showBadge && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center min-w-[20px] text-[10px] font-medium">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -135,12 +143,14 @@ const Header: React.FC = () => {
               <nav className="flex flex-col space-y-2">
                 {navItems.map((item) => {
                   const Icon = item.icon;
+                  const showBadge =
+                    item.path === "/messages" && unreadCount > 0;
                   return (
                     <Link
                       key={item.path}
                       to={item.path}
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                      className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors relative ${
                         isActive(item.path)
                           ? "text-blue-600 bg-blue-50"
                           : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -148,6 +158,11 @@ const Header: React.FC = () => {
                     >
                       <Icon className="w-4 h-4" />
                       <span className="text-sm font-medium">{item.label}</span>
+                      {showBadge && (
+                        <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center min-w-[20px] text-[10px] font-medium">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
