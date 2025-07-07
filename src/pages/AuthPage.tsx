@@ -22,7 +22,7 @@ const AuthPage: React.FC = () => {
   const { login, register, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const isLogin = location.pathname === "/login";
+  const isLogin = location.pathname === "/login"; // Determines if it's the login form
 
   const [formData, setFormData] = useState({
     name: "",
@@ -96,7 +96,6 @@ const AuthPage: React.FC = () => {
           university: dataToValidate.university, // Use the validated university value
           year: formData.year,
           bio: formData.bio,
-          // Preferences, location, matchingPreferences will be default-initialized in AuthContext
         });
         setSuccess("Registration successful! Redirecting...");
 
@@ -108,13 +107,6 @@ const AuthPage: React.FC = () => {
       console.error("Authentication error:", err);
       // Display API/backend errors
       setError(err.message || "Authentication failed. Please try again.");
-      if (err.message && err.message.includes("Invalid login credentials")) {
-        setError("Invalid email or password. Please try again.");
-      } else {
-        setError(
-          err.message || "An unexpected error occurred. Please try again."
-        );
-      }
     } finally {
       setIsSubmitting(false);
     }
@@ -150,8 +142,7 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  // isFormValid is now mainly for button disabling if all required fields have some input
-  // Full validation logic is handled by Zod
+  // isFormPartiallyFilled is now mainly for button disabling if all required fields have some input
   const isFormPartiallyFilled = () => {
     if (isLogin) {
       return formData.email && formData.password;
@@ -169,7 +160,6 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  // Show loading if checking auth state from AuthContext
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-teal-50 flex items-center justify-center">
@@ -395,7 +385,7 @@ const AuthPage: React.FC = () => {
             )}
           </div>
 
-          {validationErrors.length > 0 && ( // Display specific validation errors
+          {validationErrors.length > 0 && (
             <div className="flex flex-col space-y-1 text-red-600 text-sm bg-red-50 px-4 py-3 rounded-lg">
               {validationErrors.map((msg, index) => (
                 <div key={index} className="flex items-center space-x-2">
@@ -406,7 +396,7 @@ const AuthPage: React.FC = () => {
             </div>
           )}
 
-          {error && ( // Display general API/backend errors
+          {error && (
             <div className="flex items-center space-x-2 text-red-600 text-sm bg-red-50 px-4 py-3 rounded-lg">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>{error}</span>
@@ -422,7 +412,7 @@ const AuthPage: React.FC = () => {
 
           <button
             type="submit"
-            disabled={isSubmitting || !isFormPartiallyFilled()} // Disable if form not filled or submitting
+            disabled={isSubmitting || !isFormPartiallyFilled()}
             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             aria-disabled={isSubmitting || !isFormPartiallyFilled()}
           >
@@ -438,18 +428,16 @@ const AuthPage: React.FC = () => {
             )}
           </button>
 
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm">
-              {isLogin && (
-                <Link
-                  to="/forgot-password"
-                  className="font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  Forgot your password?
-                </Link>
-              )}
+          {isLogin && ( // Show forgot password only on login page
+            <div className="text-center">
+              <Link
+                to="/forgot-password"
+                className="font-medium text-blue-600 hover:text-blue-500 transition-colors text-sm"
+              >
+                Forgot password?
+              </Link>
             </div>
-          </div>
+          )}
 
           <div className="text-center">
             <p className="text-sm text-gray-600">

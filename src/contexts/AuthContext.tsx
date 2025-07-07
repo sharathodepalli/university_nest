@@ -8,6 +8,7 @@ import React, {
 import { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { User } from "../types";
+import GeocodingService from "../utils/geocoding";
 import { Database } from "../types/database";
 
 interface AuthContextType {
@@ -17,8 +18,8 @@ interface AuthContextType {
   register: (userData: Partial<User> & { password: string }) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
-  resetPasswordForEmail: (email: string) => Promise<void>; // Added function
-  updatePassword: (newPassword: string) => Promise<void>; // Added function
+  resetPasswordForEmail: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
   isLoading: boolean;
   isSupabaseReady: boolean;
 }
@@ -121,21 +122,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log("[AuthContext] User location updated in DB.");
         }
       }
-
-      setUser((prev) =>
-        prev
-          ? {
-              ...prev,
-              location: {
-                address: address,
-                city,
-                state,
-                country,
-                coordinates: { lat: latitude, lng: longitude },
-              },
-            }
-          : prev
-      );
     } catch (error: any) {
       if (error.code === error.PERMISSION_DENIED) {
         console.warn("[AuthContext] Geolocation permission denied by user.");
@@ -209,8 +195,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (mounted) {
           setSupabaseUser(session?.user ?? null);
           if (session?.user) {
-            await fetchUserProfile(session.user.id);
-            await fetchUserGeolocation(session.user.id);
+            await fetchUserProfile(session.user.id); // fetchUserProfile will now manage geolocation side-effect
           } else {
             setUser(null);
           }
@@ -242,8 +227,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setSupabaseUser(session?.user ?? null);
 
         if (session?.user) {
-          await fetchUserProfile(session.user.id);
-          await fetchUserGeolocation(session.user.id);
+          await fetchUserProfile(session.user.id); // fetchUserProfile will manage geolocation side-effect
         } else {
           setUser(null);
           setIsLoading(false);
@@ -259,6 +243,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [isSupabaseReady]);
 
+  /**
+   * Fetches the user's profile from the 'profiles' table.
+   * This is the authoritative source for the 'user' state.
+   * It also triggers a background geolocation update if needed, and waits for it on initial load/signup.
+   */
   const fetchUserProfile = async (userId: string) => {
     try {
       console.log(`[AuthContext] Fetching profile for user: ${userId}`);
@@ -366,6 +355,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         console.log("[AuthContext] Setting user profile:", userProfile);
         setUser(userProfile);
+
+        // Trigger background geolocation update AFTER setting user profile.
+        // This ensures the profile appears faster, and geolocation updates in background.
+        // The user can then save profile to make it permanent.
+        const currentUserLocation = userProfile?.location?.coordinates;
+        if (
+          !currentUserLocation ||
+          (currentUserLocation.lat === 0 && currentUserLocation.lng === 0)
+        ) {
+          fetchUserGeolocation(userId).catch((err) =>
+            console.error("Background geolocation update failed:", err)
+          );
+        }
       }
     } catch (error) {
       console.error("[AuthContext] Error in fetchUserProfile:", error);
@@ -375,6 +377,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  /**
+   * Handles user login with email and password.
+   * In production, logs user in via Supabase. In dev, uses mock data.
+   * If real login fails, it does NOT fall back to mock user in production.
+   */
   const login = async (email: string, password: string) => {
     setIsLoading(true);
 
@@ -434,6 +441,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log(`[AuthContext] Attempting real login for: ${email}`);
 
       const { error } = await supabase.auth.signInWithPassword({
+        // FIX: Removed 'data' destructuring
         email: email.trim(),
         password: password,
       });
@@ -549,14 +557,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             name: userData.name!,
             university: userData.university!,
             year: userData.year!,
-            email: userData.email!, // Include email in profiles table
+            email: userData.email!,
             bio: userData.bio || "",
             phone: userData.phone || null,
             verified: false,
             profile_picture: null,
             preferences: userData.preferences || {},
-            location: {}, // Default empty object
-            matchingPreferences: {}, // Default empty object
+            location: {}, // Default empty object for jsonb
+            matchingPreferences: {}, // Default empty object for jsonb
           };
         console.log(
           "[AuthContext] Profile Insert Payload:",
@@ -676,86 +684,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const resetPasswordForEmail = async (email: string) => {
-    if (!isSupabaseReady) {
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          `[AuthContext] Mock password reset for ${email}. In a real app, an email would be sent.`
-        );
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        return;
-      } else {
-        const errorMsg =
-          "Supabase is not configured. Password reset is unavailable.";
-        console.error(`[AuthContext] ERROR: ${errorMsg}`);
-        throw new Error(errorMsg);
-      }
-    }
-
-    try {
-      console.log(`[AuthContext] Requesting password reset for: ${email}`);
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        email.trim(),
-        {
-          redirectTo: `${window.location.origin}/update-password`,
-        }
-      );
-
-      if (error) {
-        console.error("[AuthContext] Supabase password reset error:", error);
-        throw error;
-      }
-
-      console.log(
-        `[AuthContext] Password reset email sent successfully to ${email}.`
-      );
-    } catch (error: any) {
-      console.error("[AuthContext] Password reset failed:", error);
-      throw new Error(
-        error.message || "Password reset failed. Please try again."
-      );
-    }
-  };
-
-  const updatePassword = async (newPassword: string) => {
-    setIsLoading(true);
-    if (!isSupabaseReady || !supabaseUser) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[AuthContext] Mock password update.");
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      } else {
-        const errorMsg =
-          "Supabase is not configured or user is not logged in. Password update is unavailable.";
-        console.error(`[AuthContext] ERROR: ${errorMsg}`);
-        setIsLoading(false);
-        throw new Error(errorMsg);
-      }
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      console.log("[AuthContext] Attempting to update password.");
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        console.error("[AuthContext] Supabase password update error:", error);
-        throw error;
-      }
-
-      console.log("[AuthContext] Password updated successfully.");
-    } catch (error: any) {
-      console.error("[AuthContext] Password update failed:", error);
-      throw new Error(
-        error.message || "Password update failed. Please try again."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const value: AuthContextType = {
     user,
     supabaseUser,
@@ -763,10 +691,84 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     updateProfile,
-    resetPasswordForEmail,
-    updatePassword,
     isLoading,
     isSupabaseReady,
+    resetPasswordForEmail: async (email: string) => {
+      setIsLoading(true);
+      try {
+        if (!isSupabaseReady) {
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              `[AuthContext] Mock password reset email sent to ${email}`
+            );
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            console.log("[AuthContext] Mock password reset successful.");
+            return;
+          } else {
+            throw new Error(
+              "Supabase is not configured. Password reset is unavailable."
+            );
+          }
+        }
+        console.log(
+          `[AuthContext] Requesting password reset email for: ${email}`
+        );
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) {
+          console.error(
+            "[AuthContext] Supabase password reset request error:",
+            error
+          );
+          throw error;
+        }
+        console.log(
+          "[AuthContext] Password reset email requested successfully."
+        );
+      } catch (error: any) {
+        console.error("[AuthContext] Password reset request failed:", error);
+        throw new Error(
+          error.message ||
+            "Failed to send password reset email. Please try again."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    updatePassword: async (newPassword: string) => {
+      setIsLoading(true);
+      try {
+        if (!isSupabaseReady) {
+          if (process.env.NODE_ENV === "development") {
+            console.log("[AuthContext] Mock password update.");
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            console.log("[AuthContext] Mock password updated successfully.");
+            return;
+          } else {
+            throw new Error(
+              "Supabase is not configured. Password update is unavailable."
+            );
+          }
+        }
+        console.log("[AuthContext] Attempting to update password.");
+        const { error } = await supabase.auth.updateUser({
+          password: newPassword,
+        });
+        if (error) {
+          console.error("[AuthContext] Supabase password update error:", error);
+          throw error;
+        }
+        console.log("[AuthContext] Password updated successfully.");
+      } catch (error: any) {
+        console.error("[AuthContext] Password update failed:", error);
+        throw new Error(
+          error.message || "Failed to update password. Please try again."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
