@@ -41,3 +41,17 @@ config/keys.js
 # Supabase local files
 supabase/.temp
 supabase/.branches
+
+# Development and Testing Files
+*-test.js
+email-test.*
+test-*.js
+*.test.local.js
+
+# IDE and Tool Files
+.bolt/
+.cursor/
+.windsurf/
+
+# Build artifacts
+dev-dist/
