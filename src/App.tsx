@@ -19,7 +19,6 @@ import ListingDetailPage from "./pages/ListingDetailPage";
 import MessagesPage from "./pages/MessagesPage";
 import FavoritesPage from "./pages/FavoritesPage";
 import ProfilePage from "./pages/ProfilePage";
-import RealTimeTest from "./components/RealTimeTest";
 import UpdatePasswordPage from "./pages/UpdatePasswordPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
@@ -27,8 +26,7 @@ import PrivacySettingsPage from "./pages/PrivacySettingsPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import VerificationPage from "./pages/VerificationPage";
-import VerificationTestPage from "./pages/VerificationTestPage";
-import PrivacyDebugger from "./components/PrivacyDebugger";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -201,10 +199,10 @@ const AppContent: React.FC = () => {
               }
             />
             <Route
-              path="/verification-test"
+              path="/verify-email"
               element={
                 <ErrorBoundary>
-                  <VerificationTestPage />
+                  <VerifyEmailPage />
                 </ErrorBoundary>
               }
             />
@@ -248,23 +246,10 @@ const AppContent: React.FC = () => {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/test-realtime"
-              element={
-                <ProtectedRoute>
-                  <ErrorBoundary>
-                    <RealTimeTest />
-                  </ErrorBoundary>
-                </ProtectedRoute>
-              }
-            />
             {/* Catch all route */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-
-        {/* Privacy Debugger - only shows in development */}
-        <PrivacyDebugger />
       </div>
     </Router>
   );

@@ -1,70 +1,12 @@
-# Quick SMTP Fix + SendGrid Implementation Guide
+// @ts-ignore: Deno imports
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 
-## 🚨 IMMEDIATE FIX: Correct Your SMTP Configuration
-
-### Step 1: Generate Gmail App Password
-1. Go to [Google Account Settings](https://myaccount.google.com/)
-2. Security → 2-Step Verification (must be enabled)
-3. App passwords → Generate new app password
-4. Choose "Mail" → Generate
-5. Copy the 16-character password (example: `abcd efgh ijkl mnop`)
-
-### Step 2: Update Supabase SMTP Settings
-```
-Go to Supabase Dashboard → Settings → Auth → SMTP Settings
-
-Host: smtp.gmail.com
-Port: 587
-Username: sharathodepalli@gmail.com  # ← Must be your Gmail address
-Password: [16-char app password]      # ← App password, not regular password
-Sender name: UniNest
-Sender email: sharathodepalli@gmail.com
-```
-
-### Step 3: Test Immediately
-After saving SMTP settings, test with your VerificationPage:
-```javascript
-// This should now work
-await supabase.auth.signUp({
-  email: 'test@university.edu',
-  password: 'temp123',
-  options: {
-    data: { verification_type: 'email' }
-  }
-})
-```
-
-## 🚀 PRODUCTION SOLUTION: SendGrid Implementation
-
-### Phase 1: SendGrid Setup (15 minutes)
-
-#### 1. Create SendGrid Account
-```bash
-# Go to https://signup.sendgrid.com/
-# Choose "Free" plan (100 emails/day)
-# Verify your email
-```
-
-#### 2. Create API Key
-```bash
-# Dashboard → Settings → API Keys → Create API Key
-# Choose "Restricted Access"
-# Give permissions: Mail Send (Full Access)
-# Copy API key: SG.xxxxxxxxxxxx
-```
-
-#### 3. Create Sender Identity
-```bash
-# Marketing → Senders → Create New Sender
-# Or verify your domain (recommended for production)
-```
-
-### Phase 2: Supabase Edge Function for SendGrid
-
-<function_calls>
-<invoke name="create_file">
-<parameter name="content">import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// Global Deno types for Edge Runtime
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -89,14 +31,15 @@ serve(async (req) => {
 
     // SendGrid configuration
     const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY')
-    const FROM_EMAIL = 'verify@uninest.com' // Your verified sender
+    const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'verify@uninest.com'
+    const APP_URL = Deno.env.get('APP_URL') || 'http://localhost:5173'
     
     if (!SENDGRID_API_KEY) {
       throw new Error('SendGrid API key not configured')
     }
 
     // Create verification link
-    const verificationLink = `https://your-app.com/verify-email?token=${verificationToken}`
+    const verificationLink = `${APP_URL}/verify-email?token=${verificationToken}`
 
     // SendGrid email payload
     const emailData = {
@@ -161,8 +104,8 @@ serve(async (req) => {
             <div style="border-top: 1px solid #E5E7EB; padding-top: 20px; text-align: center; color: #6B7280; font-size: 12px;">
               <p>© 2024 UniNest. All rights reserved.</p>
               <p>
-                <a href="https://uninest.com/privacy" style="color: #3B82F6;">Privacy Policy</a> | 
-                <a href="https://uninest.com/terms" style="color: #3B82F6;">Terms of Service</a>
+                <a href="${APP_URL}/privacy" style="color: #3B82F6;">Privacy Policy</a> | 
+                <a href="${APP_URL}/terms" style="color: #3B82F6;">Terms of Service</a>
               </p>
             </div>
           </body>

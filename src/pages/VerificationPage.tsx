@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import SendGridService from "../lib/sendgridService";
+import { verificationService } from "../lib/verificationService";
 import {
   Shield,
   GraduationCap,
@@ -17,19 +17,6 @@ import {
   AlertTriangle,
   Eye,
 } from "lucide-react";
-
-// Add crypto polyfill for older browsers if needed
-const generateUUID = () => {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  // Fallback for older browsers
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-};
 
 type VerificationMethod = "email" | "document" | "admin";
 type VerificationStatus = "unverified" | "pending" | "verified" | "rejected";
@@ -48,7 +35,7 @@ interface VerificationRequest {
 }
 
 const VerificationPage: React.FC = () => {
-  const { user, updateProfile } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [selectedMethod, setSelectedMethod] =
@@ -75,19 +62,38 @@ const VerificationPage: React.FC = () => {
       return;
     }
 
-    // Load existing verification request from localStorage (mock data)
-    const savedRequest = localStorage.getItem(
-      `verification_request_${user.id}`
-    );
-    if (savedRequest) {
-      const request = JSON.parse(savedRequest);
-      setVerificationRequest(request);
-      setVerificationStatus(request.status);
-      setSelectedMethod(request.method);
-      if (request.universityEmail) {
-        setUniversityEmail(request.universityEmail);
+    // Load verification status from production service
+    const loadVerificationStatus = async () => {
+      try {
+        const result = await verificationService.getVerificationStatus(user.id);
+        if (result.success && result.data) {
+          const status = result.data;
+          if (status.student_verified) {
+            setVerificationStatus("verified");
+          } else if (status.verification_status === "pending") {
+            setVerificationStatus("pending");
+            // Create a mock request for UI consistency
+            const request: VerificationRequest = {
+              id: `req_${Date.now()}`,
+              userId: user.id,
+              method: "email",
+              status: "pending",
+              submittedAt: new Date(),
+              universityEmail: status.student_email || "",
+            };
+            setVerificationRequest(request);
+            if (status.student_email) {
+              setUniversityEmail(status.student_email);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("Failed to load verification status:", error);
+        // If we can't load from the database, start fresh
       }
-    }
+    };
+
+    loadVerificationStatus();
   }, [user, navigate]);
 
   const handleEmailVerification = async () => {
@@ -102,53 +108,26 @@ const VerificationPage: React.FC = () => {
       return;
     }
 
-    // Validate email format first
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(universityEmail)) {
-      setError("Please enter a valid email address");
-      return;
-    }
-
-    // Validate university email format
-    const emailDomain = universityEmail.split("@")[1]?.toLowerCase();
-    if (!emailDomain) {
-      setError("Invalid email format");
-      return;
-    }
-
-    // Accept any .edu domain for production flexibility
-    if (!emailDomain.endsWith(".edu")) {
-      setError(
-        "Please use your official university email address (.edu domain)"
-      );
-      return;
-    }
-
-    // Additional validation: check for common non-university .edu domains
-    const excludedDomains = [
-      "gmail.edu", // Not a real domain, but just in case
-      "yahoo.edu", // Not a real domain
-      "hotmail.edu", // Not a real domain
-    ];
-
-    if (excludedDomains.includes(emailDomain)) {
-      setError("Please use a valid university email address");
-      return;
-    }
-
     setIsSubmitting(true);
     setError("");
 
     try {
-      console.log("Sending verification email to:", universityEmail);
+      // Use production verification service
+      const result = await verificationService.requestEmailVerification(
+        user!.id,
+        universityEmail.trim(),
+        (user as any)?.user_metadata?.name ||
+          user?.email?.split("@")[0] ||
+          "Student"
+      );
 
-      // Generate verification token and create verification URL
-      const token = generateUUID();
-      const verificationUrl = `${window.location.origin}/verify-email?token=${token}`;
+      if (!result.success) {
+        throw new Error(result.message);
+      }
 
-      // Create verification request in database first
+      // Update UI state
       const request: VerificationRequest = {
-        id: `req_${Date.now()}`,
+        id: result.data?.id || `req_${Date.now()}`,
         userId: user!.id,
         method: "email",
         status: "pending",
@@ -156,34 +135,9 @@ const VerificationPage: React.FC = () => {
         universityEmail: universityEmail.trim(),
       };
 
-      console.log("Creating verification request:", request);
-
-      // Save to localStorage (in production, this would be saved to Supabase database)
-      localStorage.setItem(
-        `verification_request_${user!.id}`,
-        JSON.stringify(request)
-      );
-
-      // Send verification email using SendGrid
-      console.log("Sending verification email via SendGrid...");
-
-      const emailSent = await SendGridService.sendVerificationEmail({
-        userEmail: universityEmail.trim(),
-        verificationToken: token,
-        verificationUrl: verificationUrl,
-      });
-
-      if (!emailSent) {
-        throw new Error("Failed to send verification email. Please try again.");
-      }
-
-      console.log("✅ Verification email sent successfully via SendGrid");
-
       setVerificationRequest(request);
       setVerificationStatus("pending");
-      setSuccess(
-        `Verification email sent to ${universityEmail}. Please check your inbox and click the verification link. The link will expire in 24 hours.`
-      );
+      setSuccess(result.message);
 
       console.log("Verification email process completed successfully");
     } catch (err: any) {
@@ -227,26 +181,10 @@ const VerificationPage: React.FC = () => {
     setError("");
 
     try {
-      // Simulate document upload and processing
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-
-      const request: VerificationRequest = {
-        id: `req_${Date.now()}`,
-        userId: user!.id,
-        method: "document",
-        status: "pending",
-        submittedAt: new Date(),
-        documents: documents.map((doc) => `uploaded_${doc.name}`),
-      };
-
-      localStorage.setItem(
-        `verification_request_${user!.id}`,
-        JSON.stringify(request)
-      );
-      setVerificationRequest(request);
-      setVerificationStatus("pending");
-      setSuccess(
-        "Documents uploaded successfully! Our team will review them within 1-2 business days."
+      // TODO: Implement document verification via verificationService
+      // For now, show an informative message
+      setError(
+        "Document verification is not yet implemented. Please use email verification instead."
       );
     } catch (err) {
       setError("Failed to upload documents. Please try again.");
@@ -265,29 +203,23 @@ const VerificationPage: React.FC = () => {
     setError("");
 
     try {
-      // Generate new verification token
-      const token = generateUUID();
-      const verificationUrl = `${window.location.origin}/verify-email?token=${token}`;
+      // Use the production verification service to resend email
+      const result = await verificationService.requestEmailVerification(
+        user!.id,
+        verificationRequest.universityEmail,
+        (user as any)?.user_metadata?.name ||
+          user?.email?.split("@")[0] ||
+          "Student"
+      );
 
-      // Resend verification email using SendGrid
-      console.log("Resending verification email via SendGrid...");
-
-      const emailSent = await SendGridService.sendVerificationEmail({
-        userEmail: verificationRequest.universityEmail,
-        verificationToken: token,
-        verificationUrl: verificationUrl,
-      });
-
-      if (!emailSent) {
-        throw new Error(
-          "Failed to resend verification email. Please try again."
-        );
+      if (!result.success) {
+        throw new Error(result.message);
       }
 
       setSuccess(
         "Verification email resent successfully! Please check your inbox."
       );
-      console.log("✅ Verification email resent successfully via SendGrid");
+      console.log("✅ Verification email resent successfully:", result);
     } catch (err: any) {
       console.error("Error resending verification email:", err);
       setError(err.message || "Failed to resend email. Please try again.");
@@ -296,26 +228,11 @@ const VerificationPage: React.FC = () => {
     }
   };
 
-  // Simulate verification completion (for testing)
+  // Remove verification simulation - not needed in production
   const simulateVerificationApproval = async () => {
-    if (verificationRequest) {
-      const updatedRequest = {
-        ...verificationRequest,
-        status: "verified" as VerificationStatus,
-        reviewedAt: new Date(),
-      };
-
-      localStorage.setItem(
-        `verification_request_${user!.id}`,
-        JSON.stringify(updatedRequest)
-      );
-      setVerificationRequest(updatedRequest);
-      setVerificationStatus("verified");
-
-      // Update user verification status
-      await updateProfile({ verified: true });
-      setSuccess("Congratulations! Your account has been verified.");
-    }
+    setError(
+      "Verification simulation is disabled in production mode. Please use the actual email verification process."
+    );
   };
 
   if (!user) {

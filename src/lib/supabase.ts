@@ -1,31 +1,31 @@
 import { createClient } from "@supabase/supabase-js";
-import { Database } from '../types/database'; // Import your Database type
+import { Database } from '../types/database';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// For development, use placeholder values if env vars are not set
-const defaultUrl = "https://placeholder.supabase.co";
-const defaultKey = "placeholder-key";
+// Validate environment variables in development
+if (import.meta.env.DEV && (!supabaseUrl || !supabaseAnonKey)) {
+  console.error('❌ Supabase environment variables are missing!');
+  console.error('Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env file');
+}
 
-// Strongly type the Supabase client with your Database schema
+// Create Supabase client
 export const supabase = createClient<Database>(
-  supabaseUrl || defaultUrl,
-  supabaseAnonKey || defaultKey
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key'
 );
 
 // Check if Supabase is properly configured
 export const isSupabaseConfigured = () => {
   try {
-    const isConfigured =
+    return !!(
       supabaseUrl &&
       supabaseAnonKey &&
-      supabaseUrl !== defaultUrl &&
-      supabaseAnonKey !== defaultKey &&
-      supabaseUrl.includes("supabase.co");
-
-    // Return actual configuration status for real-time mode
-    return isConfigured;
+      supabaseUrl.startsWith('https://') &&
+      supabaseUrl.includes('supabase.co') &&
+      supabaseAnonKey.length > 20
+    );
   } catch (error) {
     console.error("Error checking Supabase configuration:", error);
     return false;

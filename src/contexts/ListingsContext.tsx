@@ -106,10 +106,12 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
       setIsLoading(true);
       setError(null);
 
-      console.log(
-        "[ListingsContext] Refreshing listings. Supabase ready:",
-        isSupabaseReady
-      );
+      if (import.meta.env.DEV) {
+        console.log(
+          "[ListingsContext] Refreshing listings. Supabase ready:",
+          isSupabaseReady
+        );
+      }
 
       if (!isSupabaseReady) {
         // Use mock data with verified real addresses for development
@@ -261,10 +263,12 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
         })
         .filter((listing): listing is Listing => listing !== null); // Filter out nulls
 
-      console.log(
-        "[ListingsContext] Formatted listings:",
-        formattedListings.length
-      );
+      if (import.meta.env.DEV) {
+        console.log(
+          "[ListingsContext] Formatted listings:",
+          formattedListings.length
+        );
+      }
       setListings(formattedListings);
     } catch (error) {
       const errorMessage =
@@ -332,11 +336,13 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
   const applyFiltersAndSorting = useCallback(() => {
     try {
       let currentFilteredListings = [...listings];
-      console.log(
-        "[ListingsContext] Applying filters to",
-        currentFilteredListings.length,
-        "listings"
-      );
+      if (import.meta.env.DEV) {
+        console.log(
+          "[ListingsContext] Applying filters to",
+          currentFilteredListings.length,
+          "listings"
+        );
+      }
 
       // Apply search query filter
       if (filters.query) {
