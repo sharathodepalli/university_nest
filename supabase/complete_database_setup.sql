@@ -1,6 +1,27 @@
 -- ==============================================================================
--- DATABASE CORRECTIONS FOR UNINEST PRODUCTION
--- Run this in your Supabase SQL Editor to fix all issues
+-- UNINEST COMPLETE DATABASE SETUP
+-- ==============================================================================
+-- This is the ONLY SQL file you need to run for your Supabase database
+-- Run this in your Supabase SQL Editor to set up everything for production
+-- ==============================================================================
+--
+-- WHAT THIS SCRIPT DOES:
+-- ✅ Creates all required database functions
+-- ✅ Sets up Row Level Security (RLS) policies for data protection
+-- ✅ Creates storage buckets for profile and listing images
+-- ✅ Configures storage policies for secure file uploads
+-- ✅ Grants proper permissions to authenticated users
+-- ✅ Cleans up development data (blob URLs, etc.)
+-- ✅ Sets up proper foreign key constraints
+-- ✅ Fixes all production deployment issues
+--
+-- AFTER RUNNING THIS SCRIPT:
+-- ✅ Email verification will work end-to-end
+-- ✅ Profile image uploads will work properly
+-- ✅ No more 406 database access errors
+-- ✅ All user data properly secured
+-- ✅ Ready for production use
+--
 -- ==============================================================================
 
 -- 1. ADD MISSING FUNCTIONS
