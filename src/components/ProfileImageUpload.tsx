@@ -65,12 +65,42 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
 
     setUploading(true);
     try {
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
-      onImageChange(previewUrl);
+      // Import supabase here to avoid circular dependencies
+      const { supabase } = await import("../lib/supabase");
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2);
+      const fileExt = file.name.split(".").pop() || "jpg";
+      const fileName = `profile-${timestamp}-${randomString}.${fileExt}`;
+
+      // Upload to Supabase Storage
+      const { error } = await supabase.storage
+        .from("profile-images")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (error) {
+        console.error("Upload error:", error);
+        alert("Failed to upload image. Please try again.");
+        return;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("profile-images")
+        .getPublicUrl(fileName);
+
+      if (urlData?.publicUrl) {
+        onImageChange(urlData.publicUrl);
+      } else {
+        throw new Error("Failed to get public URL");
+      }
     } catch (error) {
-      console.error("Error processing image:", error);
-      alert("Failed to process image. Please try again.");
+      console.error("Error uploading image:", error);
+      alert("Failed to upload image. Please try again.");
     } finally {
       setUploading(false);
     }
