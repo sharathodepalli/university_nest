@@ -100,7 +100,7 @@ serve(async (req: Request) => {
     // Get environment variables
     const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY')
     const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'verify@uninest.com'
-    const APP_URL = Deno.env.get('APP_URL') || 'http://localhost:3001'
+    const APP_URL = Deno.env.get('APP_URL') || 'https://university-nest-git-main-sharath-chandra-s-projects.vercel.app'
     
     // Validate environment configuration
     if (!SENDGRID_API_KEY) {
@@ -204,7 +204,15 @@ async function sendVerificationEmail({
       content: [{
         type: 'text/html',
         value: generateEmailTemplate(verificationLink, studentName)
-      }]
+      }],
+      tracking_settings: {
+        click_tracking: {
+          enable: false
+        },
+        open_tracking: {
+          enable: false
+        }
+      }
     }
 
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
