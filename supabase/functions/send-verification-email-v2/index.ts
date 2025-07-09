@@ -1,6 +1,8 @@
 // Production-ready edge function for email verification
 // @ts-ignore: Deno imports
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+// @ts-ignore: Deno imports
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3'
 
 // CORS headers for cross-origin requests
 const corsHeaders = {
@@ -102,6 +104,11 @@ serve(async (req: Request) => {
     const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY')
     const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'verify@uninest.com'
     const APP_URL = Deno.env.get('APP_URL') || 'https://university-nest.vercel.app'
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    
+    // Initialize Supabase client with service role key for database operations
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     
     // Validate environment configuration
     if (!SENDGRID_API_KEY) {

@@ -53,7 +53,7 @@ RETURNS TABLE(
   success BOOLEAN,
   message TEXT,
   user_id UUID,
-  email TEXT
+  email VARCHAR(255)  -- Fixed: Changed from TEXT to VARCHAR(255) to match schema
 ) AS $$
 DECLARE
   verification_record RECORD;
@@ -70,7 +70,7 @@ BEGIN
   
   -- Check if token exists and is valid
   IF verification_record IS NULL THEN
-    RETURN QUERY SELECT FALSE, 'Invalid or expired verification token'::TEXT, NULL::UUID, NULL::TEXT;
+    RETURN QUERY SELECT FALSE, 'Invalid or expired verification token'::TEXT, NULL::UUID, NULL::VARCHAR(255);
     RETURN;
   END IF;
   
@@ -92,7 +92,7 @@ BEGIN
   WHERE id = verification_record.user_id;
   
   -- Return success
-  RETURN QUERY SELECT TRUE, 'Email verified successfully'::TEXT, verification_record.user_id, verification_record.email;
+  RETURN QUERY SELECT TRUE, 'Email verified successfully'::TEXT, verification_record.user_id, verification_record.email::VARCHAR(255);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
