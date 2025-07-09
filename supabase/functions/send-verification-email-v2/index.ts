@@ -97,10 +97,11 @@ serve(async (req: Request) => {
       )
     }
 
+
     // Get environment variables
     const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY')
     const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'verify@uninest.com'
-    const APP_URL = Deno.env.get('APP_URL') || 'https://university-nest-git-main-sharath-chandra-s-projects.vercel.app'
+    const APP_URL = Deno.env.get('APP_URL') || 'https://university-nest.vercel.app'
     
     // Validate environment configuration
     if (!SENDGRID_API_KEY) {
