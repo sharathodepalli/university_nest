@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react";
 import { verificationService } from "../lib/verificationService";
+import { useAuth } from "../contexts/AuthContext";
 
 const VerifyEmailPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
 
   const [status, setStatus] = useState<
     "loading" | "success" | "error" | "expired"
@@ -40,6 +42,18 @@ const VerifyEmailPage: React.FC = () => {
         setMessage(
           "Email verification successful! Your student status has been verified."
         );
+
+        // Refresh user data to update verification status in UI
+        if (refreshUser) {
+          try {
+            await refreshUser();
+          } catch (error) {
+            console.error(
+              "Failed to refresh user data after verification:",
+              error
+            );
+          }
+        }
       } else {
         setStatus("error");
         setMessage(

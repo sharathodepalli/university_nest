@@ -18,11 +18,12 @@ import { usePrivacy } from "../hooks/usePrivacy";
 import { universityOptions } from "../data/mockData";
 import ListingCard from "../components/ListingCard";
 import ProfileImageUpload from "../components/ProfileImageUpload";
+import { VerificationBadge } from "../components/VerificationBadge";
 import { useNavigate } from "react-router-dom";
 import GeocodingService from "../utils/geocoding";
 
 const ProfilePage: React.FC = () => {
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, refreshUser } = useAuth();
   const { listings } = useListings();
   const { shouldShowEmail, shouldShowPhone } = usePrivacy();
   const navigate = useNavigate();
@@ -75,6 +76,21 @@ const ProfilePage: React.FC = () => {
       setLocationError(null);
     }
   }, [user]); // Depend on the 'user' object from AuthContext
+
+  // Refresh user data when the component mounts to catch verification updates
+  useEffect(() => {
+    const refreshUserData = async () => {
+      if (refreshUser) {
+        try {
+          await refreshUser();
+        } catch (error) {
+          console.error("Failed to refresh user data:", error);
+        }
+      }
+    };
+
+    refreshUserData();
+  }, []); // Run once on mount
 
   const userListings = listings.filter(
     (listing) => listing.hostId === user?.id
@@ -390,19 +406,21 @@ const ProfilePage: React.FC = () => {
                         <Calendar className="w-4 h-4" />
                         <span>{user?.year || "N/A"}</span>
                       </div>
-                      {user?.student_verified ||
-                      user?.verification_status === "verified" ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          ✓ Verified
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => navigate("/verification")}
-                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors"
-                        >
-                          ○ Get Verified
-                        </button>
-                      )}
+                      <VerificationBadge
+                        isVerified={
+                          user?.student_verified ||
+                          user?.verification_status === "verified"
+                        }
+                        onClick={
+                          !(
+                            user?.student_verified ||
+                            user?.verification_status === "verified"
+                          )
+                            ? () => navigate("/verification")
+                            : undefined
+                        }
+                        size="sm"
+                      />
                     </div>
                   </div>
 
@@ -735,16 +753,14 @@ const ProfilePage: React.FC = () => {
                   }`}
                 >
                   <span>Account Verification</span>
-                  {user?.student_verified ||
-                  user?.verification_status === "verified" ? (
-                    <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                      ✓ Verified
-                    </span>
-                  ) : (
-                    <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full">
-                      Get Verified
-                    </span>
-                  )}
+                  <VerificationBadge
+                    isVerified={
+                      user?.student_verified ||
+                      user?.verification_status === "verified"
+                    }
+                    size="sm"
+                    showText={false}
+                  />
                 </button>
                 <button
                   onClick={() => navigate("/change-password")}

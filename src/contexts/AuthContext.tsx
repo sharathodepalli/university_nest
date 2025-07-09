@@ -19,6 +19,7 @@ interface AuthContextType {
   updateProfile: (updates: Partial<User>) => Promise<void>;
   resetPasswordForEmail: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
   isLoading: boolean;
   isSupabaseReady: boolean;
 }
@@ -775,6 +776,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } finally {
         setIsLoading(false);
       }
+    },
+    refreshUser: async () => {
+      if (!isSupabaseReady || !supabaseUser?.id) {
+        return;
+      }
+      await fetchUserProfile(supabaseUser.id);
     },
   };
 

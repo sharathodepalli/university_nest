@@ -9,7 +9,6 @@ import {
   Users,
   // Removed DollarSign import
   MessageCircle,
-  Star,
   Wifi,
   Car,
   Utensils,
@@ -27,6 +26,7 @@ import {
   getUserPrivacySettings,
   canUserSendMessage,
 } from "../hooks/usePrivacy";
+import { VerificationBadge } from "../components/VerificationBadge";
 import { format } from "date-fns";
 import { calculateDistance, formatDistance } from "../utils/haversine";
 
@@ -432,9 +432,8 @@ const ListingDetailPage: React.FC = () => {
 
               {(listing.host.student_verified ||
                 listing.host.verification_status === "verified") && (
-                <div className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
-                  <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                  <span>Verified Student</span>
+                <div className="flex items-center space-x-2 text-sm mb-4">
+                  <VerificationBadge isVerified={true} size="sm" />
                 </div>
               )}
 
