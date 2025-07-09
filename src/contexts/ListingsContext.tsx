@@ -225,7 +225,16 @@ export const ListingsProvider: React.FC<ListingsProviderProps> = ({
                 year: item.profiles?.year || "Unknown",
                 bio: item.profiles?.bio || "",
                 phone: item.profiles?.phone || undefined,
-                verified: Boolean(item.profiles?.verified),
+                verified: Boolean(item.profiles?.verified), // Keep legacy field for backward compatibility
+                student_verified: Boolean(item.profiles?.student_verified),
+                student_email: item.profiles?.student_email || undefined,
+                verification_status:
+                  item.profiles?.verification_status || "unverified",
+                verification_method:
+                  item.profiles?.verification_method || undefined,
+                verified_at: item.profiles?.verified_at
+                  ? new Date(item.profiles.verified_at)
+                  : undefined,
                 profilePicture: item.profiles?.profile_picture || undefined,
                 preferences: item.profiles?.preferences || {},
                 location: item.profiles?.location || {

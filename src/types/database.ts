@@ -10,6 +10,11 @@ export interface Database {
           bio: string;
           phone: string | null;
           verified: boolean;
+          student_verified: boolean | null;
+          student_email: string | null;
+          verification_status: 'unverified' | 'pending' | 'verified' | 'rejected' | null;
+          verification_method: string | null;
+          verified_at: string | null;
           profile_picture: string | null;
           preferences: any; // jsonb
           created_at: string;
@@ -26,6 +31,11 @@ export interface Database {
           bio?: string;
           phone?: string | null;
           verified?: boolean;
+          student_verified?: boolean | null;
+          student_email?: string | null;
+          verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected' | null;
+          verification_method?: string | null;
+          verified_at?: string | null;
           profile_picture?: string | null;
           preferences?: any;
           created_at?: string;
@@ -42,6 +52,11 @@ export interface Database {
           bio?: string;
           phone?: string | null;
           verified?: boolean;
+          student_verified?: boolean | null;
+          student_email?: string | null;
+          verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected' | null;
+          verification_method?: string | null;
+          verified_at?: string | null;
           profile_picture?: string | null;
           preferences?: any;
           created_at?: string;

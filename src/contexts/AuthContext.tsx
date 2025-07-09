@@ -325,7 +325,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           year: data.year,
           bio: data.bio || "",
           phone: data.phone || undefined,
-          verified: Boolean(data.verified),
+          verified: Boolean(data.verified), // Keep legacy field for backward compatibility
+          student_verified: Boolean(data.student_verified),
+          student_email: data.student_email || undefined,
+          verification_status: data.verification_status || "unverified",
+          verification_method: data.verification_method || undefined,
+          verified_at: data.verified_at
+            ? new Date(data.verified_at)
+            : undefined,
           profilePicture: data.profile_picture || undefined,
           preferences: data.preferences || {
             smokingAllowed: false,

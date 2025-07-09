@@ -271,6 +271,33 @@ CREATE POLICY "Users can delete own profile images" ON storage.objects
     auth.uid()::text = (storage.foldername(name))[1]
   );
 
+-- 6. ADD STUDENT VERIFICATION COLUMNS
+-- ==============================================================================
+
+-- Add student verification columns to profiles table if they don't exist
+ALTER TABLE public.profiles 
+ADD COLUMN IF NOT EXISTS student_verified BOOLEAN DEFAULT FALSE;
+
+ALTER TABLE public.profiles 
+ADD COLUMN IF NOT EXISTS student_email VARCHAR(255);
+
+ALTER TABLE public.profiles 
+ADD COLUMN IF NOT EXISTS verification_status VARCHAR(20) DEFAULT 'unverified' 
+CHECK (verification_status IN ('unverified', 'pending', 'verified', 'rejected'));
+
+ALTER TABLE public.profiles 
+ADD COLUMN IF NOT EXISTS verification_method VARCHAR(20);
+
+ALTER TABLE public.profiles 
+ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP WITH TIME ZONE;
+
+-- Add unique constraint to prevent duplicate student emails
+-- Drop constraint if it exists to avoid errors
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS unique_student_email;
+ALTER TABLE public.profiles 
+ADD CONSTRAINT unique_student_email 
+UNIQUE (student_email);
+
 -- ==============================================================================
 -- VERIFICATION COMPLETE
 -- ==============================================================================

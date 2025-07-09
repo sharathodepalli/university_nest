@@ -89,7 +89,9 @@ const ListingDetailPage: React.FC = () => {
 
     // Check if host allows messages based on their privacy settings
     const canMessage = canUserSendMessage(
-      user?.verified || false,
+      user?.student_verified ||
+        user?.verification_status === "verified" ||
+        false,
       listing.host.id
     );
 
@@ -428,7 +430,8 @@ const ListingDetailPage: React.FC = () => {
                 <p className="text-gray-700 text-sm mb-4">{listing.host.bio}</p>
               )}
 
-              {listing.host.verified && (
+              {(listing.host.student_verified ||
+                listing.host.verification_status === "verified") && (
                 <div className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
                   <Star className="w-4 h-4 text-yellow-500 fill-current" />
                   <span>Verified Student</span>
@@ -443,7 +446,9 @@ const ListingDetailPage: React.FC = () => {
                       listing.host.id
                     );
                     const canMessage = canUserSendMessage(
-                      user?.verified || false,
+                      user?.student_verified ||
+                        user?.verification_status === "verified" ||
+                        false,
                       listing.host.id
                     );
 

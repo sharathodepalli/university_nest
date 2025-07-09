@@ -7,6 +7,11 @@ export interface User {
   bio: string;
   profilePicture?: string;
   verified: boolean;
+  student_verified?: boolean;
+  student_email?: string;
+  verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected';
+  verification_method?: string;
+  verified_at?: Date;
   createdAt: Date;
   phone?: string;
   preferences?: {

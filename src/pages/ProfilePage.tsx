@@ -390,7 +390,8 @@ const ProfilePage: React.FC = () => {
                         <Calendar className="w-4 h-4" />
                         <span>{user?.year || "N/A"}</span>
                       </div>
-                      {user?.verified ? (
+                      {user?.student_verified ||
+                      user?.verification_status === "verified" ? (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           ✓ Verified
                         </span>
@@ -727,13 +728,15 @@ const ProfilePage: React.FC = () => {
                 <button
                   onClick={() => navigate("/verification")}
                   className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between ${
-                    user?.verified
+                    user?.student_verified ||
+                    user?.verification_status === "verified"
                       ? "text-green-700 hover:bg-green-50"
                       : "text-yellow-700 hover:bg-yellow-50"
                   }`}
                 >
                   <span>Account Verification</span>
-                  {user?.verified ? (
+                  {user?.student_verified ||
+                  user?.verification_status === "verified" ? (
                     <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
                       ✓ Verified
                     </span>

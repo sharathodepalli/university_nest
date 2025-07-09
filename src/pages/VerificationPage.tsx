@@ -56,8 +56,8 @@ const VerificationPage: React.FC = () => {
       return;
     }
 
-    // Check if user is already verified
-    if (user.verified) {
+    // Check if user is already verified using the new student verification field
+    if (user.student_verified || user.verification_status === "verified") {
       setVerificationStatus("verified");
       return;
     }
