@@ -48,25 +48,30 @@ const VerifyEmailPage: React.FC = () => {
           try {
             await refreshUser();
           } catch (error) {
-            console.error(
-              "Failed to refresh user data after verification:",
-              error
-            );
+            console.error("Error refreshing user after verification:", error);
+            // Don't fail verification if user refresh fails
           }
         }
       } else {
         setStatus("error");
-        setMessage(
-          result.message ||
-            "Verification failed. Please try requesting a new verification email."
-        );
+        setMessage(result.message || "Verification failed. Please try again.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Token verification error:", error);
-      setStatus("error");
-      setMessage(
-        "Verification failed. Please try requesting a new verification email."
-      );
+
+      // Handle auth errors specifically
+      if (
+        error?.message?.includes("refresh") ||
+        error?.message?.includes("token")
+      ) {
+        setStatus("error");
+        setMessage(
+          "Session expired. Please log in again and try verification."
+        );
+      } else {
+        setStatus("error");
+        setMessage("Verification failed. Please try again.");
+      }
     }
   };
 
