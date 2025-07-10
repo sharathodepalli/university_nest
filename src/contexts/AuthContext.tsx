@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useContext,
   useState,
@@ -126,13 +126,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const userToCreate = sessionData.session.user;
+        const defaultName = userToCreate.email?.split("@")[0] || "New User";
+
         const { error: createError } = await supabase.from("profiles").insert({
           id: userToCreate.id,
           email: userToCreate.email,
+          name: defaultName,
+          university: "Not specified",
+          year: "Not specified",
+          bio: "",
           // Add any other default fields here
         });
 
         if (createError) {
+          console.error(
+            `[AuthContext] Error creating profile for user ${userId}:`,
+            createError
+          );
           throw createError;
         }
 
@@ -190,9 +200,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // Step 2: Manually create the profile in the public.profiles table
+    const defaultName = email.split("@")[0] || "New User";
     const { error: profileError } = await supabase.from("profiles").insert({
       id: authData.user.id,
       email: authData.user.email,
+      name: profileData.name || defaultName,
+      university: profileData.university || "Not specified",
+      year: profileData.year || "Not specified",
+      bio: profileData.bio || "",
       ...profileData,
     });
 
@@ -224,49 +239,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .eq("id", supabaseUser.id)
       .select()
       .single();
-    if (error) throw error;
-    if (data) setUser(data as User);
+
+    if (error) {
+      throw error;
+    }
+    if (data) {
+      setUser(data as User);
+    }
   };
 
   const resetPasswordForEmail = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/update-password`,
+      redirectTo: `${window.location.origin}/update-password`, // URL to your password update page
     });
     if (error) throw error;
   };
 
   const updatePassword = async (newPassword: string) => {
+    if (!supabaseUser) throw new Error("No user logged in");
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw error;
   };
 
   const refreshUser = async () => {
     if (supabaseUser) {
+      setIsLoading(true);
       await fetchUserProfile(supabaseUser.id);
+      setIsLoading(false);
     }
   };
 
   const clearCachesAndRefresh = async () => {
-    // This is a placeholder for more complex cache clearing logic
+    // In a real app, you might clear other client-side caches here
     console.log("Clearing caches and refreshing user data...");
     await refreshUser();
   };
 
-  const value = {
-    user,
-    supabaseUser,
-    session,
-    login,
-    register,
-    logout,
-    updateProfile,
-    resetPasswordForEmail,
-    updatePassword,
-    refreshUser,
-    clearCachesAndRefresh,
-    isLoading,
-    isSupabaseReady,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        supabaseUser,
+        login,
+        register,
+        logout,
+        updateProfile,
+        resetPasswordForEmail,
+        updatePassword,
+        refreshUser,
+        clearCachesAndRefresh,
+        isLoading,
+        isSupabaseReady,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
