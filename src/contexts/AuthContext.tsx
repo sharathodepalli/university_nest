@@ -318,6 +318,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (data) {
         console.log("[AuthContext] Profile found:", data);
 
+        // Security check: Only consider user verified if they have a valid student_email
+        // and the verification fields are consistent
+        const isActuallyVerified = Boolean(
+          data.student_verified &&
+            data.student_email &&
+            data.verification_status === "verified"
+        );
+
         const userProfile: User = {
           id: data.id,
           name: data.name,
@@ -326,14 +334,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           year: data.year,
           bio: data.bio || "",
           phone: data.phone || undefined,
-          verified: Boolean(data.verified), // Keep legacy field for backward compatibility
-          student_verified: Boolean(data.student_verified),
+          verified: isActuallyVerified, // Only true if properly verified
+          student_verified: isActuallyVerified, // Only true if properly verified
           student_email: data.student_email || undefined,
-          verification_status: data.verification_status || "unverified",
-          verification_method: data.verification_method || undefined,
-          verified_at: data.verified_at
-            ? new Date(data.verified_at)
+          verification_status: isActuallyVerified ? "verified" : "unverified",
+          verification_method: isActuallyVerified
+            ? data.verification_method || undefined
             : undefined,
+          verified_at:
+            isActuallyVerified && data.verified_at
+              ? new Date(data.verified_at)
+              : undefined,
           profilePicture: data.profile_picture || undefined,
           preferences: data.preferences || {
             smokingAllowed: false,
