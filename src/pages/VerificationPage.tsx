@@ -35,7 +35,7 @@ interface VerificationRequest {
 }
 
 const VerificationPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const [selectedMethod, setSelectedMethod] =
