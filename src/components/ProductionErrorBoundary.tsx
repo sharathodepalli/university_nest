@@ -11,7 +11,7 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-export default class ProductionErrorBoundary extends Component<Props, State> {
+class ProductionErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
@@ -137,3 +137,7 @@ export default class ProductionErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+
+// Export both default and named for maximum compatibility
+export default ProductionErrorBoundary;
+export { ProductionErrorBoundary };

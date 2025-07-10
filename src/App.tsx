@@ -8,7 +8,7 @@ import {
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ListingsProvider } from "./contexts/ListingsContext";
 import { MessagingProvider } from "./contexts/MessagingContext";
-import ProductionErrorBoundary from "./components/ProductionErrorBoundary";
+import { ProductionErrorBoundary } from "./components/ProductionErrorBoundary";
 import OfflineNotice from "./components/OfflineNotice";
 import Header from "./components/Header";
 import HomePage from "./pages/HomePage";
