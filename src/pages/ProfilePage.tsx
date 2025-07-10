@@ -19,6 +19,7 @@ import { universityOptions } from "../data/mockData";
 import ListingCard from "../components/ListingCard";
 import ProfileImageUpload from "../components/ProfileImageUpload";
 import { VerificationBadge } from "../components/VerificationBadge";
+import CacheClearButton from "../components/CacheClearButton";
 import { useNavigate } from "react-router-dom";
 import GeocodingService from "../utils/geocoding";
 
@@ -445,13 +446,20 @@ const ProfilePage: React.FC = () => {
                         </button>
                       </>
                     ) : (
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                        <span>Edit Profile</span>
-                      </button>
+                      <>
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                          <span>Edit Profile</span>
+                        </button>
+                        {/* Cache clear button for debugging verification issues */}
+                        <CacheClearButton
+                          className="px-3 py-2 text-xs bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                          text="🧹 Refresh Data"
+                        />
+                      </>
                     )}
                   </div>
                 </div>

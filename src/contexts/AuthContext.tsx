@@ -20,6 +20,7 @@ interface AuthContextType {
   resetPasswordForEmail: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
   refreshUser: () => Promise<void>;
+  clearCachesAndRefresh: () => Promise<void>;
   isLoading: boolean;
   isSupabaseReady: boolean;
 }
@@ -703,6 +704,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  /**
+   * Clear all caches and force fresh user data
+   */
+  const clearCachesAndRefresh = async () => {
+    try {
+      console.log("[AuthContext] Clearing all caches and refreshing user data");
+
+      // Clear localStorage caches
+      Object.keys(localStorage).forEach((key) => {
+        if (key.includes("verification_") || key.includes("uninest_")) {
+          localStorage.removeItem(key);
+        }
+      });
+
+      // Clear service worker cache
+      if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames.map((cacheName) => {
+            if (
+              cacheName.includes("workbox") ||
+              cacheName.includes("runtime")
+            ) {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      }
+
+      // Force refresh user data
+      if (supabaseUser?.id) {
+        await fetchUserProfile(supabaseUser.id);
+      }
+
+      console.log("🧹 All caches cleared and user data refreshed");
+    } catch (error) {
+      console.error("Failed to clear caches:", error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     supabaseUser,
@@ -794,6 +835,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       await fetchUserProfile(supabaseUser.id);
     },
+    clearCachesAndRefresh,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

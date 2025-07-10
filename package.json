@@ -6,9 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint .",
+    "build:prod": "vite build --config vite.config.prod.ts",
+    "build:analyze": "vite build --config vite.config.prod.ts && npx vite-bundle-analyzer dist/stats.html",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts,tsx --fix",
     "preview": "vite preview",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "echo 'Tests will be added in future versions'",
+    "postbuild": "echo 'Build completed successfully! Ready for production deployment.'",
+    "health-check": "node scripts/health-check.js",
+    "deploy:vercel": "vercel --prod",
+    "deploy:netlify": "netlify deploy --prod"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.5",

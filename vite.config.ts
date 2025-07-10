@@ -34,10 +34,29 @@ export default defineConfig({
         // (JS, CSS, HTML, common image formats) are cached for offline use.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,jpeg,jpg}'],
 
-        // Define runtime caching routes for assets not in precache (e.g., API calls, dynamic images).
-        // This is crucial for controlling network requests vs. cache.
-        // For production, you might add routes for images from external CDNs, etc.
-        // Example:
+        // Fix caching issues - exclude API calls and dynamic content from SW cache
+        navigateFallback: null, // Disable navigation fallback to prevent stale page serving
+        
+        // Add runtime caching with proper cache-busting for API calls
+        runtimeCaching: [
+          {
+            // Don't cache Supabase API calls - always fetch fresh
+            urlPattern: /^https:\/\/.*\.supabase\.co\/.*$/,
+            handler: 'NetworkOnly', // Always go to network, never cache
+          },
+          {
+            // Cache static assets but allow updates
+            urlPattern: /^https:\/\/.*\.vercel\.app\/.*\.(js|css|png|jpg|jpeg|svg|webp)$/,
+            handler: 'StaleWhileRevalidate', // Serve from cache, update in background
+            options: {
+              cacheName: 'static-assets',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24, // 1 day
+              },
+            },
+          },
+        ],
         // runtimeCaching: [
         //   {
         //     urlPattern: /https:\/\/images\.pexels\.com\/.*/, // Pattern for your external image CDN

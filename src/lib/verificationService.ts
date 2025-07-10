@@ -338,6 +338,35 @@ class VerificationService {
   }
 
   /**
+   * Clear all verification and user caches to force fresh data
+   */
+  clearAllCaches(): void {
+    try {
+      // Clear verification cache
+      Object.keys(localStorage).forEach(key => {
+        if (key.includes('verification_') || key.includes('uninest_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Clear service worker cache if available
+      if ('caches' in window) {
+        caches.keys().then(cacheNames => {
+          cacheNames.forEach(cacheName => {
+            if (cacheName.includes('workbox') || cacheName.includes('runtime')) {
+              caches.delete(cacheName);
+            }
+          });
+        });
+      }
+      
+      console.log('🧹 All verification caches cleared');
+    } catch (error) {
+      console.warn('Failed to clear all caches:', error);
+    }
+  }
+
+  /**
    * Cleanup expired verifications
    */
   async cleanupExpiredVerifications(): Promise<void> {

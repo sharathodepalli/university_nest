@@ -8,7 +8,7 @@ import {
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ListingsProvider } from "./contexts/ListingsContext";
 import { MessagingProvider } from "./contexts/MessagingContext";
-import ErrorBoundary from "./components/ErrorBoundary";
+import { ProductionProductionErrorBoundary } from "./components/ProductionProductionErrorBoundary";
 import OfflineNotice from "./components/OfflineNotice";
 import Header from "./components/Header";
 import HomePage from "./pages/HomePage";
@@ -81,34 +81,34 @@ const AppContent: React.FC = () => {
             <Route
               path="/"
               element={
-                <ErrorBoundary>
+                <ProductionErrorBoundary>
                   <HomePage />
-                </ErrorBoundary>
+                </ProductionErrorBoundary>
               }
             />
             <Route
               path="/browse"
               element={
-                <ErrorBoundary>
+                <ProductionErrorBoundary>
                   <BrowsePage />
-                </ErrorBoundary>
+                </ProductionErrorBoundary>
               }
             />
             <Route
               path="/listing/:id"
               element={
-                <ErrorBoundary>
+                <ProductionErrorBoundary>
                   <ListingDetailPage />
-                </ErrorBoundary>
+                </ProductionErrorBoundary>
               }
             />
             <Route
               path="/login"
               element={
                 <PublicRoute>
-                  <ErrorBoundary>
+                  <ProductionErrorBoundary>
                     <AuthPage />
-                  </ErrorBoundary>
+                  </ProductionErrorBoundary>
                 </PublicRoute>
               }
             />
@@ -116,9 +116,9 @@ const AppContent: React.FC = () => {
               path="/register"
               element={
                 <PublicRoute>
-                  <ErrorBoundary>
+                  <ProductionErrorBoundary>
                     <AuthPage />
-                  </ErrorBoundary>
+                  </ProductionErrorBoundary>
                 </PublicRoute>
               }
             />
@@ -126,9 +126,9 @@ const AppContent: React.FC = () => {
               path="/forgot-password"
               element={
                 <PublicRoute>
-                  <ErrorBoundary>
+                  <ProductionErrorBoundary>
                     <ForgotPasswordPage />
-                  </ErrorBoundary>
+                  </ProductionErrorBoundary>
                 </PublicRoute>
               }
             />
@@ -136,9 +136,9 @@ const AppContent: React.FC = () => {
               path="/update-password"
               element={
                 <PublicRoute>
-                  <ErrorBoundary>
+                  <ProductionErrorBoundary>
                     <UpdatePasswordPage />
-                  </ErrorBoundary>
+                  </ProductionErrorBoundary>
                 </PublicRoute>
               }
             />
@@ -146,35 +146,35 @@ const AppContent: React.FC = () => {
               path="/reset-password"
               element={
                 <PublicRoute>
-                  <ErrorBoundary>
+                  <ProductionErrorBoundary>
                     <UpdatePasswordPage />
-                  </ErrorBoundary>
+                  </ProductionErrorBoundary>
                 </PublicRoute>
               }
             />
             <Route
               path="/terms"
               element={
-                <ErrorBoundary>
+                <ProductionErrorBoundary>
                   <TermsPage />
-                </ErrorBoundary>
+                </ProductionErrorBoundary>
               }
             />
             <Route
               path="/privacy"
               element={
-                <ErrorBoundary>
+                <ProductionErrorBoundary>
                   <PrivacyPage />
-                </ErrorBoundary>
+                </ProductionErrorBoundary>
               }
             />
             <Route
               path="/change-password"
               element={
                 <ProtectedRoute>
-                  <ErrorBoundary>
+                  <ProductionErrorBoundary>
                     <ChangePasswordPage />
-                  </ErrorBoundary>
+                  </ProductionErrorBoundary>
                 </ProtectedRoute>
               }
             />
@@ -182,9 +182,9 @@ const AppContent: React.FC = () => {
               path="/privacy-settings"
               element={
                 <ProtectedRoute>
-                  <ErrorBoundary>
+                  <ProductionErrorBoundary>
                     <PrivacySettingsPage />
-                  </ErrorBoundary>
+                  </ProductionErrorBoundary>
                 </ProtectedRoute>
               }
             />
@@ -192,27 +192,27 @@ const AppContent: React.FC = () => {
               path="/verification"
               element={
                 <ProtectedRoute>
-                  <ErrorBoundary>
+                  <ProductionErrorBoundary>
                     <VerificationPage />
-                  </ErrorBoundary>
+                  </ProductionErrorBoundary>
                 </ProtectedRoute>
               }
             />
             <Route
               path="/verify-email"
               element={
-                <ErrorBoundary>
+                <ProductionErrorBoundary>
                   <VerifyEmailPage />
-                </ErrorBoundary>
+                </ProductionErrorBoundary>
               }
             />
             <Route
               path="/create"
               element={
                 <ProtectedRoute>
-                  <ErrorBoundary>
+                  <ProductionErrorBoundary>
                     <CreateListingPage />
-                  </ErrorBoundary>
+                  </ProductionErrorBoundary>
                 </ProtectedRoute>
               }
             />
@@ -220,9 +220,9 @@ const AppContent: React.FC = () => {
               path="/messages"
               element={
                 <ProtectedRoute>
-                  <ErrorBoundary>
+                  <ProductionErrorBoundary>
                     <MessagesPage />
-                  </ErrorBoundary>
+                  </ProductionErrorBoundary>
                 </ProtectedRoute>
               }
             />
@@ -230,9 +230,9 @@ const AppContent: React.FC = () => {
               path="/favorites"
               element={
                 <ProtectedRoute>
-                  <ErrorBoundary>
+                  <ProductionErrorBoundary>
                     <FavoritesPage />
-                  </ErrorBoundary>
+                  </ProductionErrorBoundary>
                 </ProtectedRoute>
               }
             />
@@ -240,9 +240,9 @@ const AppContent: React.FC = () => {
               path="/profile"
               element={
                 <ProtectedRoute>
-                  <ErrorBoundary>
+                  <ProductionErrorBoundary>
                     <ProfilePage />
-                  </ErrorBoundary>
+                  </ProductionErrorBoundary>
                 </ProtectedRoute>
               }
             />
@@ -257,7 +257,7 @@ const AppContent: React.FC = () => {
 
 function App() {
   return (
-    <ErrorBoundary>
+    <ProductionErrorBoundary>
       <AuthProvider>
         <ListingsProvider>
           <MessagingProvider>
@@ -265,7 +265,7 @@ function App() {
           </MessagingProvider>
         </ListingsProvider>
       </AuthProvider>
-    </ErrorBoundary>
+    </ProductionErrorBoundary>
   );
 }
 
