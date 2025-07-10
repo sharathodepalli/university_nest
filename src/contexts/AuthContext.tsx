@@ -138,17 +138,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!email || !password) {
       throw new Error("Email and password are required for registration.");
     }
-    const { data, error } = await supabase.auth.signUp({
+
+    // Step 1: Sign up the user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: profileData,
-      },
     });
-    if (error) throw error;
-    if (data.user) {
-      await fetchUserProfile(data.user.id);
+
+    if (authError) {
+      throw authError;
     }
+    if (!authData.user) {
+      throw new Error("Registration failed: no user returned.");
+    }
+
+    // Step 2: Manually create the profile in the public.profiles table
+    const { error: profileError } = await supabase.from("profiles").insert({
+      id: authData.user.id,
+      email: authData.user.email,
+      ...profileData,
+    });
+
+    if (profileError) {
+      // This is a critical error. We should ideally handle this case,
+      // perhaps by deleting the auth user if the profile creation fails.
+      // For now, we'll just throw the error.
+      console.error("Failed to create user profile:", profileError);
+      throw profileError;
+    }
+
+    // Step 3: Fetch the newly created profile to update the context
+    await fetchUserProfile(authData.user.id);
   };
 
   const logout = async () => {
