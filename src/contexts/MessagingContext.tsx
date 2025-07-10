@@ -177,7 +177,12 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
                 university: user.university,
                 year: user.year,
                 bio: user.bio,
-                verified: user.verified,
+                verified: user.verified, // Keep legacy field for backward compatibility
+                student_verified: user.student_verified,
+                student_email: user.student_email,
+                verification_status: user.verification_status,
+                verification_method: user.verification_method,
+                verified_at: user.verified_at,
                 createdAt: user.createdAt,
               },
               {
@@ -187,7 +192,12 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
                 university: otherParticipant.university,
                 year: otherParticipant.year,
                 bio: otherParticipant.bio,
-                verified: otherParticipant.verified,
+                verified: otherParticipant.verified, // Keep legacy field for backward compatibility
+                student_verified: otherParticipant.student_verified,
+                student_email: otherParticipant.student_email,
+                verification_status: otherParticipant.verification_status,
+                verification_method: otherParticipant.verification_method,
+                verified_at: otherParticipant.verified_at,
                 createdAt: new Date(otherParticipant.created_at),
               },
             ];
