@@ -113,6 +113,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq("id", userId)
         .single();
 
+      if (error && status === 406) {
+        // Profile does not exist, let's create it.
+        console.warn(
+          `[AuthContext] Profile not found for user ${userId}. Creating one.`
+        );
+
+        const { data: sessionData, error: sessionError } =
+          await supabase.auth.getSession();
+        if (sessionError || !sessionData.session) {
+          throw new Error("Could not get session to create profile.");
+        }
+
+        const userToCreate = sessionData.session.user;
+        const { error: createError } = await supabase.from("profiles").insert({
+          id: userToCreate.id,
+          email: userToCreate.email,
+          // Add any other default fields here
+        });
+
+        if (createError) {
+          throw createError;
+        }
+
+        // Re-fetch the profile after creating it
+        const { data: newData, error: newError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single();
+
+        if (newError) throw newError;
+        setUser(newData as User);
+        return;
+      }
+
       if (error && status !== 406) {
         throw error;
       }
@@ -122,6 +157,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error("Error fetching user profile:", error);
+      // Ensure user is logged out of UI if profile fetch fails critically
+      setUser(null);
     }
   };
 
