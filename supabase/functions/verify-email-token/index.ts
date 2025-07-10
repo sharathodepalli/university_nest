@@ -164,7 +164,7 @@ async function verifyTokenInDatabase(
         'Content-Type': 'application/json',
         'apikey': serviceKey
       },
-      body: JSON.stringify({ token_input: token })
+      body: JSON.stringify({ token: token })
     })
 
     if (!response.ok) {
