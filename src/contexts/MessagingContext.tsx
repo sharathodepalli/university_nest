@@ -50,6 +50,7 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
   const [activeConversation, setActiveConversationState] =
     useState<Conversation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
 
   // Memoized setter to prevent infinite re-renders
   const setActiveConversation = useCallback(
@@ -61,6 +62,16 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
 
   const refreshConversations = useCallback(async () => {
     if (!user) return;
+
+    // Throttle rapid successive calls
+    const now = Date.now();
+    if (now - lastRefreshTime < 3000) {
+      console.log(
+        "[MessagingContext] Throttling conversation refresh, too recent"
+      );
+      return;
+    }
+    setLastRefreshTime(now);
 
     try {
       setIsLoading(true);
@@ -482,16 +493,6 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
       refreshConversations();
     }
 
-    // Handle tab visibility changes to refresh data when tab becomes active
-    const handleVisibilityChange = () => {
-      if (!document.hidden && user) {
-        console.log(
-          "[MessagingContext] Tab became visible, refreshing conversations"
-        );
-        refreshConversations();
-      }
-    };
-
     // Add loading timeout protection
     const loadingTimeout = setTimeout(() => {
       if (isLoading) {
@@ -502,14 +503,32 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
       }
     }, 10000); // 10 second timeout
 
+    return () => {
+      clearTimeout(loadingTimeout);
+    };
+  }, [user, refreshConversations]);
+
+  // Separate useEffect for tab visibility to avoid dependency issues
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        console.log(
+          "[MessagingContext] Tab became visible, refreshing conversations"
+        );
+        // Use a small delay to avoid immediate conflicts
+        setTimeout(() => {
+          refreshConversations();
+        }, 200);
+      }
+    };
+
     // Add visibility event listener
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      clearTimeout(loadingTimeout);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [user, refreshConversations, isLoading]);
+  }, [user?.id, refreshConversations]); // Only depend on user ID
 
   // Real-time subscriptions effect (separate to avoid circular dependencies)
   useEffect(() => {

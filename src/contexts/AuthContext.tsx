@@ -47,6 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [registeredUserIds, setRegisteredUserIds] = useState<Set<string>>(
     new Set()
   );
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
   useEffect(() => {
     const checkSupabase = async () => {
@@ -107,14 +108,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    // Handle tab visibility changes to refresh data when tab becomes active
-    const handleVisibilityChange = () => {
-      if (!document.hidden && session?.user) {
-        console.log("[AuthContext] Tab became visible, refreshing user data");
-        fetchUserProfile(session.user.id);
-      }
-    };
-
     // Add loading timeout protection
     const loadingTimeout = setTimeout(() => {
       if (isLoading) {
@@ -126,16 +119,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Initial check
     checkSupabase();
 
+    return () => {
+      clearTimeout(loadingTimeout);
+    };
+  }, [registeredUserIds]);
+
+  // Separate useEffect for tab visibility to avoid dependency issues
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && supabaseUser?.id) {
+        console.log("[AuthContext] Tab became visible, refreshing user data");
+        // Use a small delay to avoid immediate conflicts
+        setTimeout(() => {
+          fetchUserProfile(supabaseUser.id);
+        }, 100);
+      }
+    };
+
     // Add visibility event listener
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      clearTimeout(loadingTimeout);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [registeredUserIds, session?.user]);
+  }, [supabaseUser?.id]); // Only depend on user ID, not the whole session
 
   const fetchUserProfile = async (userId: string, skipAutoCreate = false) => {
+    // Throttle rapid successive calls
+    const now = Date.now();
+    if (now - lastFetchTime < 2000) {
+      console.log("[AuthContext] Throttling profile fetch, too recent");
+      return;
+    }
+    setLastFetchTime(now);
+
     try {
       const { data, error, status } = await supabase
         .from("profiles")
