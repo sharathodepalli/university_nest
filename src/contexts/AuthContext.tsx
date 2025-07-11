@@ -3,7 +3,7 @@ import {
   useContext,
   useState,
   useEffect,
-  ReactNode,
+  ReactNode, // Ensure ReactNode is imported
 } from "react";
 import { User as SupabaseAuthUser, Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
@@ -36,6 +36,7 @@ export const useAuth = () => {
   return context;
 };
 
+// Corrected type definition for AuthProvider props
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<SupabaseAuthUser | null>(
@@ -129,10 +130,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const handleVisibilityChange = () => {
       if (!document.hidden && supabaseUser?.id) {
         console.log("[AuthContext] Tab became visible, refreshing user data");
-        // Use a small delay to avoid immediate conflicts
-        setTimeout(() => {
-          fetchUserProfile(supabaseUser.id);
-        }, 100);
+        // Directly call fetchUserProfile, it has its own throttling
+        fetchUserProfile(supabaseUser.id);
       }
     };
 
@@ -152,6 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     setLastFetchTime(now);
+    setIsLoading(true); // Set loading true at the start of the fetch
 
     try {
       const { data, error, status } = await supabase
@@ -255,6 +255,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Error fetching user profile:", error);
       // Ensure user is logged out of UI if profile fetch fails critically
       setUser(null);
+    } finally {
+      setIsLoading(false); // Ensure loading is stopped after fetch completes or errors
     }
   };
 

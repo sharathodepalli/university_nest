@@ -73,9 +73,9 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
     }
     setLastRefreshTime(now);
 
-    try {
-      setIsLoading(true);
+    setIsLoading(true); // Set loading true at the start of the fetch
 
+    try {
       if (!isSupabaseReady) {
         // Load conversations from localStorage for development
         const storedConversations = localStorage.getItem(
@@ -107,7 +107,6 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
         } else {
           setConversations([]);
         }
-        setIsLoading(false);
         return;
       }
 
@@ -271,9 +270,9 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
       console.error("Error fetching conversations:", error);
       setConversations([]);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Ensure loading is stopped after fetch completes or errors
     }
-  }, [user, isSupabaseReady]);
+  }, [user, isSupabaseReady, lastRefreshTime]); // Added lastRefreshTime as dependency to ensure throttling works
 
   // Real-time message handler for instant updates
   const handleNewMessageRealTime = useCallback(
@@ -508,27 +507,8 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
     };
   }, [user, refreshConversations]);
 
-  // Separate useEffect for tab visibility to avoid dependency issues
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && user) {
-        console.log(
-          "[MessagingContext] Tab became visible, refreshing conversations"
-        );
-        // Use a small delay to avoid immediate conflicts
-        setTimeout(() => {
-          refreshConversations();
-        }, 200);
-      }
-    };
-
-    // Add visibility event listener
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [user?.id, refreshConversations]); // Only depend on user ID
+  // Removed the duplicate useEffect for tab visibility, replaced by useTabVisibility hook directly calling refreshConversations.
+  // The useTabVisibility hook already ensures this behavior, so a separate useEffect here is redundant.
 
   // Real-time subscriptions effect (separate to avoid circular dependencies)
   useEffect(() => {
