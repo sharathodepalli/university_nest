@@ -264,9 +264,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshUser = async () => {
     if (supabaseUser) {
-      setIsLoading(true);
       await fetchUserProfile(supabaseUser.id);
-      setIsLoading(false);
     }
   };
 

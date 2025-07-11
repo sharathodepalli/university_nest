@@ -24,13 +24,7 @@ import { useNavigate } from "react-router-dom";
 import GeocodingService from "../utils/geocoding";
 
 const ProfilePage: React.FC = () => {
-  const {
-    user,
-    logout,
-    updateProfile,
-    refreshUser,
-    isLoading: isAuthLoading,
-  } = useAuth();
+  const { user, logout, updateProfile, isLoading: isAuthLoading } = useAuth();
   const { listings } = useListings();
   const { shouldShowEmail, shouldShowPhone } = usePrivacy();
   const navigate = useNavigate();
@@ -84,20 +78,8 @@ const ProfilePage: React.FC = () => {
     }
   }, [user]); // Depend on the 'user' object from AuthContext
 
-  // Refresh user data when the component mounts to catch verification updates
-  useEffect(() => {
-    const refreshUserData = async () => {
-      if (refreshUser) {
-        try {
-          await refreshUser();
-        } catch (error) {
-          console.error("Failed to refresh user data:", error);
-        }
-      }
-    };
-
-    refreshUserData();
-  }, []); // Run once on mount
+  // Note: Removed automatic refresh on mount to prevent loading loops
+  // The AuthContext already handles initial user data loading
 
   const userListings = listings.filter(
     (listing) => listing.hostId === user?.id
