@@ -3,7 +3,7 @@ import {
   useContext,
   useState,
   useEffect,
-  ReactNode, // Ensure ReactNode is imported
+  ReactNode,
 } from "react";
 import { User as SupabaseAuthUser, Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
@@ -36,7 +36,6 @@ export const useAuth = () => {
   return context;
 };
 
-// Corrected type definition for AuthProvider props
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<SupabaseAuthUser | null>(
