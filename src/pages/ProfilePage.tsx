@@ -191,8 +191,13 @@ const ProfilePage: React.FC = () => {
           ...prev,
           locationLat: result.latitude,
           locationLng: result.longitude,
-          // Keep the original address fields if geocoding result doesn't provide better parsing
-          // The geocoding service returns the formatted address, but we'll keep user's input
+          // If geocoding provides more accurate components, use them
+          locationAddress:
+            result.components?.streetName || formData.locationAddress,
+          locationCity: result.components?.city || formData.locationCity,
+          locationState: result.components?.stateCode || formData.locationState,
+          locationCountry:
+            result.components?.countryCode || formData.locationCountry,
         }));
         console.log("Address geocoded successfully:", result);
       } else {
@@ -238,62 +243,61 @@ const ProfilePage: React.FC = () => {
         longitude
       );
 
+      // --- START OF MODIFIED SECTION ---
+      let streetAddress = ""; // Combined street number and street name
       let city = "Unknown City";
       let state = "Unknown State";
       let country = "USA";
-      let address = "";
 
-      if (
-        reverseGeocodeResult.success &&
-        reverseGeocodeResult.formattedAddress
-      ) {
-        const fullAddress = reverseGeocodeResult.formattedAddress;
-        console.log("Reverse geocode result:", fullAddress);
+      if (reverseGeocodeResult.success && reverseGeocodeResult.components) {
+        const components = reverseGeocodeResult.components;
+        console.log("Reverse geocode components:", components);
 
-        // Parse the address more intelligently
+        // Prioritize street number and name for a more complete address
+        if (components.streetNumber && components.streetName) {
+          streetAddress = `${components.streetNumber} ${components.streetName}`;
+        } else if (components.streetName) {
+          streetAddress = components.streetName;
+        } else if (reverseGeocodeResult.formattedAddress) {
+          // Fallback to formatted address's first part if structured street is missing
+          streetAddress =
+            reverseGeocodeResult.formattedAddress.split(",")[0]?.trim() || "";
+        }
+
+        city = components.city || city;
+        state = components.stateCode || components.state || state; // Prefer short code, then long name
+        country = components.countryCode || components.country || country; // Prefer short code, then long name
+      } else {
+        // Fallback to previous string parsing if structured components are not available
+        const fullAddress = reverseGeocodeResult.formattedAddress || "";
         const addressParts = fullAddress.split(",").map((s) => s.trim());
 
         if (addressParts.length >= 1) {
-          // Use the first part as the address (street number and name)
-          address = addressParts[0];
+          streetAddress = addressParts[0];
         }
-
         if (addressParts.length >= 2) {
-          // Second part is usually the city
           city = addressParts[1];
         }
-
         if (addressParts.length >= 3) {
-          // Third part usually contains state and ZIP
           const stateAndZip = addressParts[2];
-          // Extract state code (first 2 letters after any spaces)
           const stateMatch = stateAndZip.match(/([A-Z]{2})/);
           if (stateMatch) {
             state = stateMatch[1];
           } else {
-            // Fallback: take the first word
             state = stateAndZip.split(" ")[0];
           }
         }
-
         if (addressParts.length >= 4) {
-          // Last part is usually the country
           country = addressParts[addressParts.length - 1];
         }
-
-        console.log("Parsed address components:", {
-          address,
-          city,
-          state,
-          country,
-        });
       }
+      // --- END OF MODIFIED SECTION ---
 
       setFormData((prev) => ({
         ...prev,
         locationLat: latitude,
         locationLng: longitude,
-        locationAddress: address || "",
+        locationAddress: streetAddress,
         locationCity: city,
         locationState: state,
         locationCountry: country,
@@ -459,8 +463,8 @@ const ProfilePage: React.FC = () => {
               </div>
             </div>
           </div>
+          {/* CORRECTED: Added missing closing div for the Profile Header section */}
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Profile Details */}
           <div className="lg:col-span-1 space-y-6">

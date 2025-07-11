@@ -1,4 +1,4 @@
-import { Database as DB } from './database'; // Assuming you have a separate database.ts or this is a consolidated file
+import { Database as DB } from '../../../src/types/database'; // Assuming you have a separate database.ts or this is a consolidated file
 
 // --- Frontend-facing User and Listing Interfaces (CamelCase) ---
 export interface User {

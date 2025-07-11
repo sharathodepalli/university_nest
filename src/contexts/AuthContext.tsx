@@ -444,16 +444,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       matching_preferences?: (typeof updates)["matchingPreferences"];
     };
 
-    const updatesForDb: UpdatesForDb = { ...updates };
+    // CORRECTED: Explicitly build updatesForDb to avoid type conflicts with Omit
+    const updatesForDb: UpdatesForDb = {};
 
-    if (updates.profilePicture !== undefined) {
-      updatesForDb.profile_picture = updates.profilePicture;
-      delete updatesForDb.profilePicture;
+    // Copy properties from 'updates' that do not need renaming
+    for (const key in updates) {
+      if (key !== "profilePicture" && key !== "matchingPreferences") {
+        // Ensure the key is a valid property of UpdatesForDb (type assertion for safety)
+        (updatesForDb as any)[key] = (updates as any)[key];
+      }
     }
 
+    // Map camelCase to snake_case for profilePicture
+    if (updates.profilePicture !== undefined) {
+      updatesForDb.profile_picture = updates.profilePicture;
+    }
+
+    // Map camelCase to snake_case for matchingPreferences
     if (updates.matchingPreferences !== undefined) {
       updatesForDb.matching_preferences = updates.matchingPreferences;
-      delete updatesForDb.matchingPreferences; // Remove the camelCase key
     }
 
     const { data, error } = await supabase

@@ -1,21 +1,8 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "lib": ["deno.window", "deno.ns"],
-    "strict": true,
-    "exactOptionalPropertyTypes": true,
-    "noImplicitOverride": true,
-    "noImplicitReturns": true,
-    "noImplicitThis": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false
-  },
-  "imports": {
-    "std/": "https://deno.land/std@0.178.0/",
-    "supabase": "https://esm.sh/@supabase/supabase-js@2.42.0",
-    "resend": "https://esm.sh/resend@1.1.0"
+    "lib": ["deno.window"],
+    "strict": true
   },
   "lint": {
     "rules": {

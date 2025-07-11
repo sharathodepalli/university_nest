@@ -343,19 +343,20 @@ class VerificationService {
     }
   }
 
-  private clearVerificationCache(userId: string): void {
-    try {
-      localStorage.removeItem(`${this.CACHE_PREFIX}${userId}`);
-      // Also clear any old localStorage keys
-      Object.keys(localStorage).forEach(key => {
-        if (key.includes('verification_request_')) {
-          localStorage.removeItem(key);
-        }
-      });
-    } catch (error) {
-      console.warn('Failed to clear verification cache:', error);
-    }
-  }
+  // CORRECTED: Removed the unused 'clearVerificationCache' function.
+  // private clearVerificationCache(userId: string): void {
+  //   try {
+  //     localStorage.removeItem(`${this.CACHE_PREFIX}${userId}`);
+  //     // Also clear any old localStorage keys
+  //     Object.keys(localStorage).forEach(key => {
+  //       if (key.includes('verification_request_')) {
+  //         localStorage.removeItem(key);
+  //       }
+  //     });
+  //   } catch (error) {
+  //     console.warn('Failed to clear verification cache:', error);
+  //   }
+  // }
 
   /**
    * Clear all verification and user caches to force fresh data

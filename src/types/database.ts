@@ -21,7 +21,7 @@ export interface Database {
           updated_at: string;
           email?: string | null;
           location: any | null; // ADDED: jsonb for user location
-          matchingPreferences: any | null; // ADDED: jsonb for user matching preferences
+          matching_preferences: any | null; // CORRECTED: Changed from matchingPreferences to matching_preferences
         };
         Insert: {
           id: string;
@@ -42,7 +42,7 @@ export interface Database {
           updated_at?: string;
           email?: string | null;
           location?: any | null;
-          matchingPreferences?: any | null;
+          matching_preferences?: any | null; // CORRECTED: Changed from matchingPreferences to matching_preferences
         };
         Update: {
           id?: string;
@@ -63,7 +63,7 @@ export interface Database {
           updated_at?: string;
           email?: string | null;
           location?: any | null;
-          matchingPreferences?: any | null;
+          matching_preferences?: any | null; // CORRECTED: Changed from matchingPreferences to matching_preferences
         };
       };
       listings: {

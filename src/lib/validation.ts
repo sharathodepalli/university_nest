@@ -5,7 +5,17 @@ export const userRegistrationSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name too long'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase, and number'),
+    // CORRECTED: Added regex to require at least one special character, aligning with UI feedback.
+    // Regex breakdown:
+    // ^                   - Start of the string
+    // (?=.*[a-z])         - Must contain at least one lowercase letter
+    // (?=.*[A-Z])         - Must contain at least one uppercase letter
+    // (?=.*\d)            - Must contain at least one digit
+    // (?=.*[^A-Za-z0-9])  - Must contain at least one special character (not a letter or number)
+    // .                   - Match any character (except newline)
+    // +                   - One or more times
+    // $                   - End of the string
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/, 'Password must contain uppercase, lowercase, number, and symbol'),
   university: z.string().min(2, 'University name required'),
   year: z.enum(['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'PhD']),
   bio: z.string().max(500, 'Bio too long').optional(),

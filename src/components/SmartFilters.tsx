@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react"; // CORRECTED: Added useEffect to import
 import {
   Filter,
   X,
@@ -9,12 +9,12 @@ import {
   Settings,
   Target,
   CaseSensitive as UniversityIcon,
-} from "lucide-react"; // Removed Users import
+} from "lucide-react";
 import { useListings } from "../contexts/ListingsContext";
 import { useAuth } from "../contexts/AuthContext";
 import { SearchFilters as SearchFiltersType } from "../types";
 import { amenityOptions, roomTypeOptions } from "../data/mockData";
-import { universityData } from "../data/universities";
+import { universityData } from "../data/universities"; // Assuming this exists and is up-to-date
 
 interface SmartFiltersProps {
   className?: string;
@@ -22,16 +22,25 @@ interface SmartFiltersProps {
 
 const SmartFilters: React.FC<SmartFiltersProps> = ({ className = "" }) => {
   const { user } = useAuth();
-  const { filters, setFilters, sortBy, setSortBy } = useListings();
+  const { filters, setFilters, sortBy, setSortBy, listings } = useListings(); // Added listings here for universitySuggestions
   const [isOpen, setIsOpen] = useState(false);
   const [localFilters, setLocalFilters] = useState<SearchFiltersType>(filters);
 
-  const handleFilterChange = (key: keyof SearchFiltersType, value: any) => {
-    setLocalFilters((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  };
+  // Sync localFilters with global filters when global filters change
+  // This is important if filters can be changed by other components (e.g., SearchFilters)
+  useEffect(() => {
+    setLocalFilters(filters);
+  }, [filters]);
+
+  const handleFilterChange = useCallback(
+    (key: keyof SearchFiltersType, value: any) => {
+      setLocalFilters((prev) => ({
+        ...prev,
+        [key]: value,
+      }));
+    },
+    [] // No dependencies needed as setLocalFilters is stable
+  );
 
   const applyFilters = () => {
     setFilters(localFilters);
@@ -45,7 +54,7 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = "" }) => {
   };
 
   const applySmartFilters = (type: "budget" | "university" | "nearby") => {
-    const smartFilters: SearchFiltersType = { ...localFilters };
+    const smartFilters: SearchFiltersType = { ...filters }; // Use global filters as base for smart filters
 
     switch (type) {
       case "budget":
@@ -65,33 +74,86 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = "" }) => {
         if (user?.matchingPreferences?.maxDistance) {
           smartFilters.maxDistance = user.matchingPreferences.maxDistance;
         } else {
-          smartFilters.maxDistance = 10; // Default 10 miles
+          smartFilters.maxDistance = 10; // Default 10 miles if no user preference
         }
         break;
     }
 
-    setLocalFilters(smartFilters);
-    setFilters(smartFilters);
+    setLocalFilters(smartFilters); // Update local state for immediate visual feedback
+    setFilters(smartFilters); // Apply to global state
     setIsOpen(false);
   };
 
-  const hasActiveFilters = Object.keys(filters).some((key) => {
-    const value = filters[key as keyof SearchFiltersType];
-    return (
-      value !== undefined &&
-      value !== null &&
-      (Array.isArray(value) ? value.length > 0 : true)
-    );
-  });
+  const hasActiveFilters = useMemo(() => {
+    return Object.keys(filters).some((key) => {
+      const value = filters[key as keyof SearchFiltersType];
+      // Check for non-empty values, considering arrays and objects
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === "object" && value !== null) {
+        // For objects like priceRange or custom university, check if any property is set
+        return Object.values(value).some(
+          (propVal) =>
+            propVal !== undefined && propVal !== null && propVal !== ""
+        );
+      }
+      return value !== undefined && value !== null && value !== "";
+    });
+  }, [filters]);
 
-  const activeFilterCount = Object.keys(filters).filter((key) => {
-    const value = filters[key as keyof SearchFiltersType];
-    return (
-      value !== undefined &&
-      value !== null &&
-      (Array.isArray(value) ? value.length > 0 : true)
-    );
-  }).length;
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    for (const key in filters) {
+      const value = filters[key as keyof SearchFiltersType];
+      if (value === undefined || value === null || value === "") continue;
+
+      if (Array.isArray(value)) {
+        if (value.length > 0) count++;
+      } else if (typeof value === "object") {
+        // For objects like priceRange or custom university:
+        // Consider it active if any of its properties are set
+        if (
+          Object.values(value).some(
+            (propVal) =>
+              propVal !== undefined && propVal !== null && propVal !== ""
+          )
+        ) {
+          count++;
+        }
+      } else {
+        count++;
+      }
+    }
+    return count;
+  }, [filters]);
+
+  // Memoize university suggestions based on available listings and user's university
+  const universitySuggestions = useMemo(() => {
+    const universities = new Set<string>();
+
+    // Add universities from listings (if they have a known university in host profile)
+    listings.forEach((listing) => {
+      if (
+        listing.host?.university &&
+        listing.host.university !== "Not specified"
+      ) {
+        universities.add(listing.host.university);
+      }
+      // Also add universities found in nearbyUniversities array of listings
+      listing.location?.nearbyUniversities?.forEach((uni) => {
+        universities.add(uni.name);
+      });
+    });
+
+    // Add user's university if available
+    if (user?.university && user.university !== "Not specified") {
+      universities.add(user.university);
+    }
+
+    // Add common universities from static data if still needed
+    universityData.forEach((uni) => universities.add(uni.name));
+
+    return Array.from(universities).sort();
+  }, [listings, user]);
 
   return (
     <div className={`relative ${className}`}>
@@ -154,10 +216,8 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = "" }) => {
         >
           <option value="relevance">Best Match</option>
           <option value="match">Compatibility</option>
-          <option value="price-asc">Price: Low to High</option>{" "}
-          {/* Corrected value */}
-          <option value="price-desc">Price: High to Low</option>{" "}
-          {/* Corrected value */}
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
           <option value="distance">Distance</option>
           <option value="newest">Newest First</option>
         </select>
@@ -199,21 +259,34 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = "" }) => {
                 <select
                   // CORRECTED: Conditionally set value based on type of localFilters.university
                   value={
-                    typeof localFilters.university === "object"
-                      ? localFilters.university.custom
-                      : localFilters.university || ""
+                    typeof localFilters.university === "object" &&
+                    localFilters.university !== null
+                      ? "other" // If it's a custom object, select 'other' option
+                      : (localFilters.university as string) || "" // Otherwise use string value or empty
                   }
-                  onChange={(e) =>
-                    handleFilterChange("university", e.target.value)
-                  }
+                  onChange={(e) => {
+                    const selectedValue = e.target.value;
+                    if (selectedValue === "other") {
+                      // If 'Other' is selected in SmartFilters, clear the university filter.
+                      // Users should go to Advanced Filters for custom university text input.
+                      handleFilterChange("university", "");
+                      console.log(
+                        "For custom university input, please use Advanced Filters."
+                      );
+                    } else {
+                      handleFilterChange("university", selectedValue);
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Any University</option>
-                  {universityData.map((uni) => (
-                    <option key={uni.id} value={uni.name}>
-                      {uni.name}
+                  {universitySuggestions.map((uni) => (
+                    <option key={uni} value={uni}>
+                      {uni}
                     </option>
                   ))}
+                  {/* Add 'Other' option for consistency, though it will clear the filter here */}
+                  <option value="other">Other (Use Advanced Filters)</option>
                 </select>
 
                 <div>
