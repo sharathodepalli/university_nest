@@ -21,6 +21,22 @@ class VerificationService {
   private readonly CACHE_PREFIX = 'uninest_verification_';
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+  constructor() {
+    // Initialize tab visibility handling
+    this.initTabVisibilityHandling();
+  }
+
+  /**
+   * Initialize tab visibility change handling
+   */
+  private initTabVisibilityHandling(): void {
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        this.handleTabVisibilityChange();
+      });
+    }
+  }
+
   /**
    * Request email verification for a student email
    */
@@ -377,6 +393,61 @@ class VerificationService {
       console.log('🧹 All verification caches cleared');
     } catch (error) {
       console.warn('Failed to clear all caches:', error);
+    }
+  }
+
+  /**
+   * Handle tab visibility changes to clear stale caches
+   */
+  handleTabVisibilityChange(): void {
+    if (!document.hidden) {
+      console.log('[VerificationService] Tab became visible, clearing stale caches');
+      // Clear caches that might be stale
+      Object.keys(localStorage).forEach(key => {
+        if (key.includes(this.CACHE_PREFIX)) {
+          try {
+            const cached = localStorage.getItem(key);
+            if (cached) {
+              const { timestamp } = JSON.parse(cached);
+              // Clear cache if older than 2 minutes when tab becomes visible
+              if (Date.now() - timestamp > 2 * 60 * 1000) {
+                localStorage.removeItem(key);
+              }
+            }
+          } catch (error) {
+            // If parsing fails, remove the corrupted cache
+            localStorage.removeItem(key);
+          }
+        }
+      });
+    }
+  }
+
+  /**
+   * Clear stale caches on tab visibility change
+   */
+  clearStaleCaches(): void {
+    try {
+      const now = Date.now();
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith(this.CACHE_PREFIX)) {
+          try {
+            const cached = localStorage.getItem(key);
+            if (cached) {
+              const { timestamp } = JSON.parse(cached);
+              // Clear cache if older than 10 minutes
+              if (now - timestamp > 10 * 60 * 1000) {
+                localStorage.removeItem(key);
+                console.log(`🧹 Cleared stale cache: ${key}`);
+              }
+            }
+          } catch {
+            localStorage.removeItem(key);
+          }
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to clear stale caches:', error);
     }
   }
 

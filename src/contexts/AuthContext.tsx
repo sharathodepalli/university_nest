@@ -8,6 +8,7 @@ import {
 import { User as SupabaseAuthUser, Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import { User } from "../types";
+import { useTabVisibility } from "../hooks/useTabVisibility";
 
 interface AuthContextType {
   user: User | null;
@@ -106,9 +107,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
+    // Handle tab visibility changes to refresh data when tab becomes active
+    const handleVisibilityChange = () => {
+      if (!document.hidden && session?.user) {
+        console.log("[AuthContext] Tab became visible, refreshing user data");
+        fetchUserProfile(session.user.id);
+      }
+    };
+
+    // Add loading timeout protection
+    const loadingTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn("[AuthContext] Loading timeout reached, forcing stop");
+        setIsLoading(false);
+      }
+    }, 10000); // 10 second timeout
+
     // Initial check
     checkSupabase();
-  }, [registeredUserIds]);
+
+    // Add visibility event listener
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearTimeout(loadingTimeout);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [registeredUserIds, session?.user]);
 
   const fetchUserProfile = async (userId: string, skipAutoCreate = false) => {
     try {
@@ -149,7 +174,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           university: "Not specified",
           year: "Not specified",
           bio: "",
-          // Add any other default fields here
+          // Explicitly set verification fields to false for new profiles
+          verified: false,
+          student_verified: false,
+          verification_status: "unverified",
+          student_email: null,
+          verification_method: null,
+          verified_at: null,
         });
 
         if (createError) {
@@ -251,7 +282,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         university: profileData.university || "Not specified",
         year: profileData.year || "Not specified",
         bio: profileData.bio || "",
-        ...profileData,
+        // Explicitly set verification fields to false for new registrations
+        verified: false,
+        student_verified: false,
+        verification_status: "unverified",
+        student_email: null,
+        verification_method: null,
+        verified_at: null,
+        // Apply any other profile data AFTER setting defaults
+        phone: profileData.phone || null,
+        profilePicture: profileData.profilePicture || null,
+        location: profileData.location || null,
+        preferences: profileData.preferences || null,
+        matchingPreferences: profileData.matchingPreferences || null,
       });
 
       if (profileError) {
@@ -332,6 +375,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log("Clearing caches and refreshing user data...");
     await refreshUser();
   };
+
+  // Handle tab visibility changes to refresh stale data
+  useTabVisibility({
+    onVisible: () => {
+      console.log("[AuthContext] Tab became visible, refreshing user data");
+      if (supabaseUser && !isLoading) {
+        refreshUser().catch(console.error);
+      }
+    },
+    onFocus: () => {
+      console.log("[AuthContext] Window focused");
+      // Clear any stuck loading states after 30 seconds
+      setTimeout(() => {
+        if (isLoading) {
+          console.warn(
+            "[AuthContext] Forcing loading state to false after timeout"
+          );
+          setIsLoading(false);
+        }
+      }, 30000);
+    },
+  });
 
   return (
     <AuthContext.Provider

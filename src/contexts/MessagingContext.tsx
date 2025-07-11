@@ -9,6 +9,7 @@ import React, {
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
 import { Conversation, Message, User, Listing } from "../types";
+import { useTabVisibility } from "../hooks/useTabVisibility";
 
 interface MessagingContextType {
   conversations: Conversation[];
@@ -451,12 +452,64 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
     [user]
   );
 
+  // Handle tab visibility changes to refresh conversations
+  useTabVisibility({
+    onVisible: () => {
+      console.log(
+        "[MessagingContext] Tab became visible, refreshing conversations"
+      );
+      if (user && !isLoading) {
+        refreshConversations().catch(console.error);
+      }
+    },
+    onFocus: () => {
+      console.log("[MessagingContext] Window focused");
+      // Clear any stuck loading states after 30 seconds
+      setTimeout(() => {
+        if (isLoading) {
+          console.warn(
+            "[MessagingContext] Forcing loading state to false after timeout"
+          );
+          setIsLoading(false);
+        }
+      }, 30000);
+    },
+  });
+
   // Initial load effect
   useEffect(() => {
     if (user) {
       refreshConversations();
     }
-  }, [user, refreshConversations]);
+
+    // Handle tab visibility changes to refresh data when tab becomes active
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        console.log(
+          "[MessagingContext] Tab became visible, refreshing conversations"
+        );
+        refreshConversations();
+      }
+    };
+
+    // Add loading timeout protection
+    const loadingTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn(
+          "[MessagingContext] Loading timeout reached, forcing stop"
+        );
+        setIsLoading(false);
+      }
+    }, 10000); // 10 second timeout
+
+    // Add visibility event listener
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearTimeout(loadingTimeout);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [user, refreshConversations, isLoading]);
 
   // Real-time subscriptions effect (separate to avoid circular dependencies)
   useEffect(() => {
