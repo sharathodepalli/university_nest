@@ -129,8 +129,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const handleVisibilityChange = () => {
       if (!document.hidden && supabaseUser?.id) {
         console.log("[AuthContext] Tab became visible, refreshing user data");
-        // Directly call fetchUserProfile, it has its own throttling
-        fetchUserProfile(supabaseUser.id);
+        // Use a small delay to avoid immediate conflicts
+        setTimeout(() => {
+          fetchUserProfile(supabaseUser.id);
+        }, 100);
       }
     };
 
@@ -150,7 +152,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     setLastFetchTime(now);
-    setIsLoading(true); // Set loading true at the start of the fetch
 
     try {
       const { data, error, status } = await supabase
@@ -254,8 +255,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Error fetching user profile:", error);
       // Ensure user is logged out of UI if profile fetch fails critically
       setUser(null);
-    } finally {
-      setIsLoading(false); // Ensure loading is stopped after fetch completes or errors
     }
   };
 
@@ -266,6 +265,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     if (error) throw error;
   };
+
   const register = async (userData: Partial<User> & { password: string }) => {
     const { email, password, ...profileData } = userData;
     if (!email || !password) {
@@ -288,49 +288,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const userId = authData.user.id;
 
-      // Track that this user is being registered to prevent auto-creation
+      // Track that this user is being registered. This will ensure fetchUserProfile
+      // does not try to auto-create if the profile is expected to be created by AuthContext
+      // This is less critical now that explicit profile insert is removed, but harmless.
       setRegisteredUserIds((prev) => new Set(prev).add(userId));
 
-      // Step 2: Manually create the profile in the public.profiles table
-      const defaultName = email.split("@")[0] || "New User";
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: userId,
-        email: authData.user.email,
-        name: profileData.name || defaultName,
-        university: profileData.university || "Not specified",
-        year: profileData.year || "Not specified",
-        bio: profileData.bio || "",
-        // Explicitly set verification fields to false for new registrations
-        verified: false,
-        student_verified: false,
-        verification_status: "unverified",
-        student_email: null,
-        verification_method: null,
-        verified_at: null,
-        // Apply any other profile data AFTER setting defaults
-        phone: profileData.phone || null,
-        profilePicture: profileData.profilePicture || null,
-        location: profileData.location || null,
-        preferences: profileData.preferences || null,
-        matchingPreferences: profileData.matchingPreferences || null,
-      });
+      // Removed explicit profile insertion here.
+      // Profile creation is now handled by the fetchUserProfile
+      // function when onAuthStateChange fires for the new user session.
 
-      if (profileError) {
-        // Handle race condition: if profile already exists, just continue
-        if (profileError.code === "23505") {
-          console.log(
-            `[Register] Profile already exists for user ${userId}, continuing with existing profile`
-          );
-        } else {
-          console.error("Failed to create user profile:", profileError);
-          throw profileError;
-        }
-      }
-
-      // Step 3: Fetch the newly created profile to update the context
-      await fetchUserProfile(userId, true); // Skip auto-create since we just created it
-
-      // Clean up the tracking after successful registration
+      // Clean up the tracking after successful registration (or failure)
       setTimeout(() => {
         setRegisteredUserIds((prev) => {
           const newSet = new Set(prev);

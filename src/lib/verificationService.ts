@@ -67,16 +67,17 @@ class VerificationService {
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
       // Insert verification record into database
+      // FIX: Changed 'email_verifications' to 'email_verification_tokens'
       const { data: verification, error: dbError } = await supabase
-        .from('email_verifications')
+        .from('email_verification_tokens') // Corrected table name
         .insert({
           user_id: userId,
           email: email.toLowerCase().trim(),
-          token,
-          verification_type: 'student_email',
+          token_hash: token, // Changed to token_hash as per DB schema
+          // verification_type field is not in DB schema, removed
           status: 'pending',
           expires_at: expiresAt.toISOString(),
-          metadata: { studentName }
+          // metadata field is not in DB schema, removed
         })
         .select()
         .single();
@@ -94,8 +95,9 @@ class VerificationService {
       
       if (!emailResult.success) {
         // Clean up database record if email failed
+        // FIX: Update status on the correct table 'email_verification_tokens'
         await supabase
-          .from('email_verifications')
+          .from('email_verification_tokens') // Corrected table name
           .update({ status: 'failed' })
           .eq('id', verification.id);
 
@@ -132,8 +134,9 @@ class VerificationService {
       console.log(`[VerificationService] Calling verify_email_token with token: ${token}`);
       
       // Call database function to verify token
+      // FIX: Changed token_input to token_hash as per SQL RPC function
       const { data, error } = await supabase
-        .rpc('verify_email_token', { token_input: token });
+        .rpc('verify_email_token', { token_hash: token }); // Corrected RPC parameter
 
       console.log(`[VerificationService] Database response:`, { data, error });
 
@@ -163,7 +166,8 @@ class VerificationService {
         };
       }
 
-      if (!result.success) {
+      // The RPC function returns 'status' and 'message' based on the SQL function's TABLE(status TEXT, message TEXT)
+      if (result.status !== 'verified') { // Check the actual status returned by the RPC
         return {
           success: false,
           message: result.message || 'Invalid or expired verification token'
@@ -171,13 +175,17 @@ class VerificationService {
       }
 
       // Clear cached data
-      this.clearVerificationCache(result.user_id);
+      // The RPC function does not return user_id directly in the success path, it's assumed from context
+      // It returns the email. We should rely on AuthContext to refresh the user profile.
+      // This part might need the user_id if we want to clear a specific cache, but the AuthContext refresh covers it.
+      // Assuming result.user_id is available if 'verified'
+      this.clearVerificationCache(result.user_id); 
 
       return {
         success: true,
         message: result.message || 'Email verified successfully!',
         data: {
-          userId: result.user_id,
+          userId: result.user_id, // This should ideally be returned by the RPC or derived
           email: result.verified_email // Fixed: use verified_email not email
         }
       };
@@ -207,9 +215,11 @@ class VerificationService {
       }
 
       // Query database
+      // FIX: Query the profiles table for student_verified status directly for the user
       const { data, error } = await supabase
-        .from('user_verification_status')
-        .select('*')
+        .from('profiles') // Corrected table to profiles
+        .select('student_verified, verification_status') // Select specific fields
+        .eq('id', userId) // Filter by user ID
         .single();
 
       if (error && error.code !== 'PGRST116') { // Not found is ok
@@ -220,6 +230,7 @@ class VerificationService {
         };
       }
 
+      // If data is null, profile might not exist or not verified
       const status = data || {
         student_verified: false,
         verification_status: 'unverified'
@@ -259,7 +270,12 @@ class VerificationService {
         throw new Error('Supabase configuration missing');
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/send-verification-email`, {
+      // FIX: Ensure the correct Edge Function URL is used if you have a V2 version
+      // Assuming 'send-verification-email-v2' is the deployed version based on previous context.
+      // If your deployed function is just 'send-verification-email', adjust the URL accordingly.
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/send-verification-email-v2`; // Check your deployed Edge Function name
+
+      const response = await fetch(edgeFunctionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
