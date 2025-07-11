@@ -492,6 +492,16 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
       refreshConversations();
     }
 
+    // Handle tab visibility changes to refresh data when tab becomes active
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        console.log(
+          "[MessagingContext] Tab became visible, refreshing conversations"
+        );
+        refreshConversations();
+      }
+    };
+
     // Add loading timeout protection
     const loadingTimeout = setTimeout(() => {
       if (isLoading) {
@@ -502,8 +512,12 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
       }
     }, 10000); // 10 second timeout
 
+    // Add visibility event listener
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       clearTimeout(loadingTimeout);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [user, refreshConversations]);
 

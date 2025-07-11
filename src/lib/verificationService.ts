@@ -62,58 +62,30 @@ class VerificationService {
         };
       }
 
-      // Generate verification token
+      // Generate verification token (client-side only for sending to Edge Function)
       const token = this.generateToken();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-      // Insert verification record into database
-      // FIX: Changed 'email_verifications' to 'email_verification_tokens'
-      const { data: verification, error: dbError } = await supabase
-        .from('email_verification_tokens') // Corrected table name
-        .insert({
-          user_id: userId,
-          email: email.toLowerCase().trim(),
-          token_hash: token, // Changed to token_hash as per DB schema
-          // verification_type field is not in DB schema, removed
-          status: 'pending',
-          expires_at: expiresAt.toISOString(),
-          // metadata field is not in DB schema, removed
-        })
-        .select()
-        .single();
-
-      if (dbError) {
-        console.error('Database error:', dbError);
-        return {
-          success: false,
-          message: 'Failed to create verification request'
-        };
-      }
-
-      // Send verification email via Edge Function
-      const emailResult = await this.sendVerificationEmail(email, token, studentName);
+      
+      // FIX: Removed client-side database insert for verification token.
+      // The Edge Function will now handle the token insertion securely on the backend.
+      // Call Edge Function to send verification email and create token record
+      const emailResult = await this.sendVerificationEmail(email, token, studentName, userId);
       
       if (!emailResult.success) {
-        // Clean up database record if email failed
-        // FIX: Update status on the correct table 'email_verification_tokens'
-        await supabase
-          .from('email_verification_tokens') // Corrected table name
-          .update({ status: 'failed' })
-          .eq('id', verification.id);
-
         return emailResult;
       }
 
-      // Cache verification data for quick access
-      this.cacheVerificationData(userId, verification);
+      // Cache verification data (optional, depends on how you want to track pending state client-side)
+      // For now, we rely on the backend to manage the token state.
+      // this.cacheVerificationData(userId, verification); // 'verification' object is no longer available directly here
 
       return {
         success: true,
         message: `Verification email sent to ${email}. Please check your inbox and click the verification link.`,
         data: {
-          id: verification.id,
           email,
-          expiresAt: expiresAt.toISOString()
+          // We no longer have verification.id or expiresAt directly here,
+          // as the Edge Function handles the DB insertion.
+          // If needed, the Edge Function could return this info.
         }
       };
 
@@ -134,7 +106,7 @@ class VerificationService {
       console.log(`[VerificationService] Calling verify_email_token with token: ${token}`);
       
       // Call database function to verify token
-      // FIX: Changed token_input to token_hash as per SQL RPC function
+      // FIX: Ensure the RPC parameter name matches the SQL function definition ('token_hash')
       const { data, error } = await supabase
         .rpc('verify_email_token', { token_hash: token }); // Corrected RPC parameter
 
@@ -166,8 +138,7 @@ class VerificationService {
         };
       }
 
-      // The RPC function returns 'status' and 'message' based on the SQL function's TABLE(status TEXT, message TEXT)
-      if (result.status !== 'verified') { // Check the actual status returned by the RPC
+      if (result.status !== 'verified') { // Check the actual status returned by the RPC function
         return {
           success: false,
           message: result.message || 'Invalid or expired verification token'
@@ -175,18 +146,19 @@ class VerificationService {
       }
 
       // Clear cached data
-      // The RPC function does not return user_id directly in the success path, it's assumed from context
-      // It returns the email. We should rely on AuthContext to refresh the user profile.
-      // This part might need the user_id if we want to clear a specific cache, but the AuthContext refresh covers it.
-      // Assuming result.user_id is available if 'verified'
-      this.clearVerificationCache(result.user_id); 
+      // The RPC function (verify_email_token) does not return user_id directly in the success path,
+      // it returns the verified email. We should rely on AuthContext to refresh the user profile
+      // after this function completes successfully to get the updated user data.
+      // If result.user_id is passed back from RPC, uncomment below. For now, assuming AuthContext refresh.
+      // this.clearVerificationCache(result.user_id); 
 
       return {
         success: true,
         message: result.message || 'Email verified successfully!',
+        // The RPC returns { status, message }. Adapt data to match expected output if needed by consumers.
         data: {
-          userId: result.user_id, // This should ideally be returned by the RPC or derived
-          email: result.verified_email // Fixed: use verified_email not email
+          // userId: result.user_id, // If RPC returns user_id
+          // email: result.verified_email // If RPC returns verified_email
         }
       };
 
@@ -214,15 +186,15 @@ class VerificationService {
         };
       }
 
-      // Query database
-      // FIX: Query the profiles table for student_verified status directly for the user
+      // Query database directly from profiles table for user's verification status
+      // FIX: Changed table from 'user_verification_status' to 'profiles'
       const { data, error } = await supabase
         .from('profiles') // Corrected table to profiles
         .select('student_verified, verification_status') // Select specific fields
         .eq('id', userId) // Filter by user ID
         .single();
 
-      if (error && error.code !== 'PGRST116') { // Not found is ok
+      if (error && error.code !== 'PGRST116') { // Not found (PGRST116) is ok, other errors are not
         console.error('Error fetching verification status:', error);
         return {
           success: false,
@@ -230,7 +202,7 @@ class VerificationService {
         };
       }
 
-      // If data is null, profile might not exist or not verified
+      // If data is null (profile not found), assume unverified
       const status = data || {
         student_verified: false,
         verification_status: 'unverified'
@@ -256,11 +228,13 @@ class VerificationService {
 
   /**
    * Send verification email via Edge Function
+   * Changed to private as it's an internal helper for requestEmailVerification
    */
   private async sendVerificationEmail(
     email: string,
-    token: string,
-    studentName?: string
+    token: string, // This token will be the token_hash for the DB insertion
+    studentName: string | undefined,
+    userId: string // FIX: Pass userId to the Edge Function to allow it to create token
   ): Promise<VerificationResult> {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -270,21 +244,21 @@ class VerificationService {
         throw new Error('Supabase configuration missing');
       }
 
-      // FIX: Ensure the correct Edge Function URL is used if you have a V2 version
-      // Assuming 'send-verification-email-v2' is the deployed version based on previous context.
-      // If your deployed function is just 'send-verification-email', adjust the URL accordingly.
-      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/send-verification-email-v2`; // Check your deployed Edge Function name
+      // FIX: Ensure the correct Edge Function URL is used if you have a V2 version.
+      // Based on provided logs and typical deployment, this is the expected name.
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/send-verification-email-v2`; 
 
       const response = await fetch(edgeFunctionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Authorization': `Bearer ${supabaseAnonKey}`, // Use anon key for client-side call to Edge Function
         },
         body: JSON.stringify({
           email,
-          verificationToken: token,
-          studentName: studentName || 'Student'
+          verificationToken: token, // Pass the generated token
+          studentName: studentName || 'Student',
+          userId: userId // FIX: Pass userId to the Edge Function
         }),
       });
 

@@ -288,14 +288,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const userId = authData.user.id;
 
-      // Track that this user is being registered. This will ensure fetchUserProfile
-      // does not try to auto-create if the profile is expected to be created by AuthContext
-      // This is less critical now that explicit profile insert is removed, but harmless.
+      // Track that this user is being registered to prevent auto-creation
       setRegisteredUserIds((prev) => new Set(prev).add(userId));
 
-      // Removed explicit profile insertion here.
-      // Profile creation is now handled by the fetchUserProfile
-      // function when onAuthStateChange fires for the new user session.
+      // Step 2: Manually create the profile in the public.profiles table
+      const defaultName = email.split("@")[0] || "New User";
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: userId,
+        email: authData.user.email,
+        name: profileData.name || defaultName,
+        university: profileData.university || "Not specified",
+        year: profileData.year || "Not specified",
+        bio: profileData.bio || "",
+        // Explicitly set verification fields to false for new registrations
+        verified: false,
+        student_verified: false,
+        verification_status: "unverified",
+        student_email: null,
+        verification_method: null,
+        verified_at: null,
+        // Apply any other profile data AFTER setting defaults
+        phone: profileData.phone || null,
+        profilePicture: profileData.profilePicture || null,
+        location: profileData.location || null,
+        preferences: profileData.preferences || null,
+        matchingPreferences: profileData.matchingPreferences || null,
+      });
+
+      if (profileError) {
+        // Handle race condition: if profile already exists, just continue
+        if (profileError.code === "23505") {
+          console.log(
+            `[Register] Profile already exists for user ${userId}, continuing with existing profile`
+          );
+        } else {
+          console.error("Failed to create user profile:", profileError);
+          throw profileError;
+        }
+      }
+
+      // Step 3: Fetch the newly created profile to update the context
+      await fetchUserProfile(userId, true); // Skip auto-create since we just created it
 
       // Clean up the tracking after successful registration (or failure)
       setTimeout(() => {
