@@ -10,6 +10,7 @@ import { ListingsProvider } from "./contexts/ListingsContext";
 import { MessagingProvider } from "./contexts/MessagingContext";
 import { ProductionErrorBoundary } from "./components/ProductionErrorBoundary";
 import OfflineNotice from "./components/OfflineNotice";
+import AuthDebugger from "./components/AuthDebugger";
 import Header from "./components/Header";
 import HomePage from "./pages/HomePage";
 import BrowsePage from "./pages/BrowsePage";
@@ -250,6 +251,7 @@ const AppContent: React.FC = () => {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+        <AuthDebugger />
       </div>
     </Router>
   );

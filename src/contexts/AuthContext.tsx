@@ -81,20 +81,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         const {
           data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+        } = supabase.auth.onAuthStateChange(async (event, newSession) => {
           setIsLoading(true);
           console.log(
-            "[AuthContext] Auth state changed:",
-            newSession ? "SESSION" : "NO_SESSION",
-            newSession?.user?.id
+            `[AuthContext] Auth state changed - event: ${event}, session: ${
+              newSession ? "YES" : "NO"
+            }, userId: ${newSession?.user?.id}`
           );
           setSession(newSession);
           setSupabaseUser(newSession?.user ?? null);
 
           if (newSession?.user) {
             const skipAutoCreate = registeredUserIds.has(newSession.user.id);
+            console.log(
+              `[AuthContext] Fetching profile for auth change, skipAutoCreate: ${skipAutoCreate}`
+            );
             await fetchUserProfile(newSession.user.id, skipAutoCreate);
           } else {
+            console.log(
+              `[AuthContext] No user in session, setting user to null`
+            );
             setUser(null);
           }
           setIsLoading(false);
@@ -153,12 +159,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     setLastFetchTime(now);
 
+    console.log(
+      `[AuthContext] Starting fetchUserProfile for userId: ${userId}, skipAutoCreate: ${skipAutoCreate}`
+    );
+
     try {
       const { data, error, status } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
         .single();
+
+      console.log(
+        `[AuthContext] Profile fetch result - data: ${
+          data ? "FOUND" : "NULL"
+        }, error: ${error ? error.message : "NONE"}, status: ${status}`
+      );
 
       if (error && status === 406) {
         // Profile does not exist
@@ -240,30 +256,69 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .single();
 
         if (newError) throw newError;
+        console.log(
+          `[AuthContext] Profile created and fetched successfully for user ${userId}`
+        );
         setUser(newData as User);
         return;
       }
 
       if (error && status !== 406) {
+        console.error(
+          `[AuthContext] Profile fetch error (status: ${status}):`,
+          error
+        );
         throw error;
       }
 
       if (data) {
+        console.log(
+          `[AuthContext] Profile found and set for user ${userId}:`,
+          data.name
+        );
         setUser(data as User);
+      } else {
+        console.warn(
+          `[AuthContext] No profile data returned for user ${userId}`
+        );
+        setUser(null);
       }
     } catch (error) {
-      console.error("Error fetching user profile:", error);
+      console.error(
+        `[AuthContext] Error in fetchUserProfile for user ${userId}:`,
+        error
+      );
       // Ensure user is logged out of UI if profile fetch fails critically
       setUser(null);
     }
   };
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    console.log(`[AuthContext] Starting login for email: ${email}`);
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    if (error) throw error;
+
+    if (error) {
+      console.error(`[AuthContext] Login error:`, error);
+      throw error;
+    }
+
+    console.log(
+      `[AuthContext] Login successful for user: ${data.user?.id}, session: ${
+        data.session ? "YES" : "NO"
+      }`
+    );
+
+    // The auth state change will trigger fetchUserProfile automatically
+    // But let's also try to fetch immediately to ensure we have the profile
+    if (data.user?.id) {
+      console.log(
+        `[AuthContext] Attempting immediate profile fetch after login`
+      );
+      await fetchUserProfile(data.user.id);
+    }
   };
 
   const register = async (userData: Partial<User> & { password: string }) => {
