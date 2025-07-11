@@ -191,20 +191,8 @@ const ProfilePage: React.FC = () => {
           ...prev,
           locationLat: result.latitude,
           locationLng: result.longitude,
-          // Update address/city/state from formatted_address for better consistency if geocoding returns a better one
-          locationAddress: result.formattedAddress ?? formData.locationAddress,
-          locationCity:
-            result.formattedAddress?.split(",").slice(-3, -2)[0]?.trim() ||
-            formData.locationCity, // Heuristic: City is usually 3rd from end
-          locationState:
-            result.formattedAddress
-              ?.split(",")
-              .slice(-2, -1)[0]
-              ?.trim()
-              .split(" ")[0] || formData.locationState, // Heuristic: State from 2nd last
-          locationCountry:
-            result.formattedAddress?.split(",").pop()?.trim() ||
-            formData.locationCountry, // Heuristic: Last is country
+          // Keep the original address fields if geocoding result doesn't provide better parsing
+          // The geocoding service returns the formatted address, but we'll keep user's input
         }));
         console.log("Address geocoded successfully:", result);
       } else {
@@ -249,6 +237,7 @@ const ProfilePage: React.FC = () => {
         latitude,
         longitude
       );
+
       let city = "Unknown City";
       let state = "Unknown State";
       let country = "USA";
@@ -258,28 +247,46 @@ const ProfilePage: React.FC = () => {
         reverseGeocodeResult.success &&
         reverseGeocodeResult.formattedAddress
       ) {
-        address = reverseGeocodeResult.formattedAddress;
-        const addressParts = reverseGeocodeResult.formattedAddress
-          .split(",")
-          .map((s) => s.trim());
-        if (addressParts.length >= 4) {
-          // e.g., Street, City, State ZIP, Country
-          address = addressParts[0]; // Just the street part
-          city = addressParts[addressParts.length - 3];
-          state = addressParts[addressParts.length - 2].split(" ")[0];
-          country = addressParts[addressParts.length - 1];
-        } else if (addressParts.length >= 3) {
-          // e.g., City, State, Country
-          address = addressParts[0]; // Take first part as general address if full not available
-          city = addressParts[0];
-          state = addressParts[1];
-          country = addressParts[2];
-        } else if (addressParts.length === 2) {
-          // just city, state
+        const fullAddress = reverseGeocodeResult.formattedAddress;
+        console.log("Reverse geocode result:", fullAddress);
+
+        // Parse the address more intelligently
+        const addressParts = fullAddress.split(",").map((s) => s.trim());
+
+        if (addressParts.length >= 1) {
+          // Use the first part as the address (street number and name)
           address = addressParts[0];
-          city = addressParts[0];
-          state = addressParts[1];
         }
+
+        if (addressParts.length >= 2) {
+          // Second part is usually the city
+          city = addressParts[1];
+        }
+
+        if (addressParts.length >= 3) {
+          // Third part usually contains state and ZIP
+          const stateAndZip = addressParts[2];
+          // Extract state code (first 2 letters after any spaces)
+          const stateMatch = stateAndZip.match(/([A-Z]{2})/);
+          if (stateMatch) {
+            state = stateMatch[1];
+          } else {
+            // Fallback: take the first word
+            state = stateAndZip.split(" ")[0];
+          }
+        }
+
+        if (addressParts.length >= 4) {
+          // Last part is usually the country
+          country = addressParts[addressParts.length - 1];
+        }
+
+        console.log("Parsed address components:", {
+          address,
+          city,
+          state,
+          country,
+        });
       }
 
       setFormData((prev) => ({
