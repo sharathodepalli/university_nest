@@ -15,6 +15,7 @@ const VerifyEmailPage: React.FC = () => {
   const [message, setMessage] = useState(
     "Verifying your email, please wait..."
   );
+  const [hasVerified, setHasVerified] = useState(false);
 
   const token = searchParams.get("token");
 
@@ -26,11 +27,22 @@ const VerifyEmailPage: React.FC = () => {
         return;
       }
 
+      if (hasVerified) {
+        console.log(
+          "[VerifyEmailPage] Already verified, skipping duplicate call"
+        );
+        return;
+      }
+
+      setHasVerified(true);
       console.log(`[VerifyEmailPage] Attempting to verify token: ${token}`);
+
       try {
         // The service calls the backend function which is SECURITY DEFINER,
         // so it doesn't require a session to run the update.
         const result = await verificationService.verifyEmailToken(token);
+
+        console.log("[VerifyEmailPage] Verification result:", result);
 
         if (result.success) {
           console.log(
@@ -72,12 +84,14 @@ const VerifyEmailPage: React.FC = () => {
       } catch (error: any) {
         console.error("[VerifyEmailPage] Unexpected error:", error);
         setStatus("error");
-        setMessage("An unexpected error occurred. Please try again later.");
+        setMessage(
+          `An unexpected error occurred: ${error.message || "Unknown error"}`
+        );
       }
     };
 
     verify();
-  }, [token, session, refreshUser, navigate]);
+  }, [token]); // Removed session, refreshUser, navigate to prevent multiple calls
 
   const handleReturnToVerification = () => {
     navigate("/verification");

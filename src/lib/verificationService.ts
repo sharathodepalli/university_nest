@@ -113,23 +113,37 @@ class VerificationService {
    */
   async verifyEmailToken(token: string): Promise<VerificationResult> {
     try {
+      console.log(`[VerificationService] Calling verify_email_token with token: ${token}`);
+      
       // Call database function to verify token
       const { data, error } = await supabase
         .rpc('verify_email_token', { token_input: token });
 
+      console.log(`[VerificationService] Database response:`, { data, error });
+
       if (error) {
-        console.error('Token verification error:', error);
+        console.error('Token verification database error:', error);
         return {
           success: false,
-          message: 'Verification failed. Please try again.'
+          message: `Database error: ${error.message || 'Unknown error'}`
         };
       }
 
-      const result = data?.[0];
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        console.error('Invalid verification response - no data returned');
+        return {
+          success: false,
+          message: 'Invalid verification response from database'
+        };
+      }
+
+      const result = data[0];
+      console.log(`[VerificationService] Parsed result:`, result);
+      
       if (!result) {
         return {
           success: false,
-          message: 'Invalid verification response'
+          message: 'No verification result returned'
         };
       }
 
@@ -148,15 +162,15 @@ class VerificationService {
         message: result.message || 'Email verified successfully!',
         data: {
           userId: result.user_id,
-          email: result.email
+          email: result.verified_email // Fixed: use verified_email not email
         }
       };
 
     } catch (error) {
-      console.error('Token verification error:', error);
+      console.error('Token verification unexpected error:', error);
       return {
         success: false,
-        message: 'Verification failed. Please try again.'
+        message: `Verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
   }
