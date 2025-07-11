@@ -24,7 +24,13 @@ import { useNavigate } from "react-router-dom";
 import GeocodingService from "../utils/geocoding";
 
 const ProfilePage: React.FC = () => {
-  const { user, logout, updateProfile, refreshUser } = useAuth();
+  const {
+    user,
+    logout,
+    updateProfile,
+    refreshUser,
+    isLoading: isAuthLoading,
+  } = useAuth();
   const { listings } = useListings();
   const { shouldShowEmail, shouldShowPhone } = usePrivacy();
   const navigate = useNavigate();
@@ -321,12 +327,18 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  // If user data is not loaded yet or explicitly null, show loading/login message
-  // This ensures the page doesn't try to render user-specific data before it's available
-  // The 'user' object from AuthContext will be null initially while isLoading is true.
-  // Once isLoading becomes false, 'user' will either be null (not logged in) or the user object.
-  if (!user && !locationLoading && !isSaving) {
-    // Exclude transient loading states
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -339,20 +351,6 @@ const ProfilePage: React.FC = () => {
           >
             Go to Login
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  // If AuthContext is still loading the user, show a loading spinner
-  // This covers the initial app load and auth state changes
-  if (!user && (locationLoading || isSaving)) {
-    // These specific flags are for actions on this page
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading profile data...</p>
         </div>
       </div>
     );
