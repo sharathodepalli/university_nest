@@ -153,11 +153,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
 
         if (createError) {
-          console.error(
-            `[AuthContext] Error creating profile for user ${userId}:`,
-            createError
-          );
-          throw createError;
+          // Handle race condition: if profile already exists, fetch it instead
+          if (createError.code === "23505") {
+            console.log(
+              `[AuthContext] Profile already exists for user ${userId}, fetching existing profile`
+            );
+            // Try to fetch the existing profile
+            const { data: existingData, error: fetchError } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", userId)
+              .single();
+
+            if (fetchError) {
+              console.error(
+                `[AuthContext] Error fetching existing profile:`,
+                fetchError
+              );
+              throw fetchError;
+            }
+
+            setUser(existingData as User);
+            return;
+          } else {
+            console.error(
+              `[AuthContext] Error creating profile for user ${userId}:`,
+              createError
+            );
+            throw createError;
+          }
         }
 
         // Re-fetch the profile after creating it
@@ -231,8 +255,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (profileError) {
-        console.error("Failed to create user profile:", profileError);
-        throw profileError;
+        // Handle race condition: if profile already exists, just continue
+        if (profileError.code === "23505") {
+          console.log(
+            `[Register] Profile already exists for user ${userId}, continuing with existing profile`
+          );
+        } else {
+          console.error("Failed to create user profile:", profileError);
+          throw profileError;
+        }
       }
 
       // Step 3: Fetch the newly created profile to update the context
