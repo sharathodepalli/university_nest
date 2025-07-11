@@ -45,7 +45,7 @@ const SmartFilters: React.FC<SmartFiltersProps> = ({ className = "" }) => {
   };
 
   const applySmartFilters = (type: "budget" | "university" | "nearby") => {
-    let smartFilters: SearchFiltersType = { ...localFilters };
+    const smartFilters: SearchFiltersType = { ...localFilters };
 
     switch (type) {
       case "budget":

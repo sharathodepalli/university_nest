@@ -81,17 +81,17 @@ const VerifyEmailPage: React.FC = () => {
               "Verification failed. The link may be invalid or expired."
           );
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("[VerifyEmailPage] Unexpected error:", error);
         setStatus("error");
-        setMessage(
-          `An unexpected error occurred: ${error.message || "Unknown error"}`
-        );
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        setMessage(`An unexpected error occurred: ${errorMessage}`);
       }
     };
 
     verify();
-  }, [token]); // Removed session, refreshUser, navigate to prevent multiple calls
+  }, [token, session?.user, refreshUser, navigate]); // Include all dependencies
 
   const handleReturnToVerification = () => {
     navigate("/verification");
@@ -99,52 +99,6 @@ const VerifyEmailPage: React.FC = () => {
 
   const handleGoToDashboard = () => {
     navigate("/browse");
-  };
-
-  const handleGoToLogin = () => {
-    navigate("/login");
-  };
-
-  const renderContent = () => {
-    switch (status) {
-      case "verifying":
-        return (
-          <div className="flex justify-center">
-            <Loader2 className="h-16 w-16 text-blue-500 animate-spin" />
-          </div>
-        );
-      case "success":
-        return (
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-green-600 mb-4">Success!</h2>
-            <p className="text-gray-700">{message}</p>
-            {!session?.user && (
-              <button
-                onClick={handleGoToLogin}
-                className="mt-6 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300"
-              >
-                Go to Login
-              </button>
-            )}
-          </div>
-        );
-      case "error":
-      case "expired":
-        return (
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-red-600 mb-4">
-              Verification Failed
-            </h2>
-            <p className="text-gray-700">{message}</p>
-            <button
-              onClick={handleReturnToVerification}
-              className="mt-6 bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300"
-            >
-              Request New Verification Email
-            </button>
-          </div>
-        );
-    }
   };
 
   return (

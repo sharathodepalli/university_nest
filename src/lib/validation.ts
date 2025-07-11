@@ -9,7 +9,7 @@ export const userRegistrationSchema = z.object({
   university: z.string().min(2, 'University name required'),
   year: z.enum(['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'PhD']),
   bio: z.string().max(500, 'Bio too long').optional(),
-  phone: z.string().regex(/^\+?[\d\s\-\(\)]+$/, 'Invalid phone number').optional()
+  phone: z.string().regex(/^\+?[\d\s\-()]+$/, 'Invalid phone number').optional()
 });
 
 export const userLoginSchema = z.object({

@@ -43,7 +43,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSupabaseReady, setIsSupabaseReady] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [registeredUserIds, setRegisteredUserIds] = useState<Set<string>>(
+    new Set()
+  );
 
   useEffect(() => {
     const checkSupabase = async () => {
@@ -88,7 +90,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setSupabaseUser(newSession?.user ?? null);
 
           if (newSession?.user) {
-            await fetchUserProfile(newSession.user.id, isRegistering);
+            const skipAutoCreate = registeredUserIds.has(newSession.user.id);
+            await fetchUserProfile(newSession.user.id, skipAutoCreate);
           } else {
             setUser(null);
           }
@@ -105,7 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Initial check
     checkSupabase();
-  }, []);
+  }, [registeredUserIds]);
 
   const fetchUserProfile = async (userId: string, skipAutoCreate = false) => {
     try {
@@ -190,14 +193,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     if (error) throw error;
   };
-
   const register = async (userData: Partial<User> & { password: string }) => {
     const { email, password, ...profileData } = userData;
     if (!email || !password) {
       throw new Error("Email and password are required for registration.");
     }
-
-    setIsRegistering(true);
 
     try {
       // Step 1: Sign up the user in Supabase Auth
@@ -213,10 +213,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Registration failed: no user returned.");
       }
 
+      const userId = authData.user.id;
+
+      // Track that this user is being registered to prevent auto-creation
+      setRegisteredUserIds((prev) => new Set(prev).add(userId));
+
       // Step 2: Manually create the profile in the public.profiles table
       const defaultName = email.split("@")[0] || "New User";
       const { error: profileError } = await supabase.from("profiles").insert({
-        id: authData.user.id,
+        id: userId,
         email: authData.user.email,
         name: profileData.name || defaultName,
         university: profileData.university || "Not specified",
@@ -231,9 +236,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Step 3: Fetch the newly created profile to update the context
-      await fetchUserProfile(authData.user.id, true); // Skip auto-create since we just created it
-    } finally {
-      setIsRegistering(false);
+      await fetchUserProfile(userId, true); // Skip auto-create since we just created it
+
+      // Clean up the tracking after successful registration
+      setTimeout(() => {
+        setRegisteredUserIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(userId);
+          return newSet;
+        });
+      }, 5000); // Clean up after 5 seconds
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error;
     }
   };
 

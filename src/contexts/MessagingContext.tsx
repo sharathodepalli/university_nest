@@ -405,7 +405,7 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
         }
       });
     },
-    [user, isSupabaseReady]
+    [user, isSupabaseReady, refreshConversations]
   );
 
   // Real-time message update handler (for read status, etc.)
@@ -500,7 +500,12 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
       console.log("[MessagingContext] Cleaning up real-time subscriptions");
       messageSubscription.unsubscribe();
     };
-  }, [user, isSupabaseReady]);
+  }, [
+    user,
+    isSupabaseReady,
+    handleMessageUpdateRealTime,
+    handleNewMessageRealTime,
+  ]);
 
   const sendMessage = useCallback(
     async (conversationId: string, content: string) => {

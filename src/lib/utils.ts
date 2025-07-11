@@ -104,7 +104,7 @@ export const deepClone = <T>(obj: T): T => {
   if (typeof obj === 'object') {
     const clonedObj = {} as any;
     for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
         clonedObj[key] = deepClone(obj[key]);
       }
     }
@@ -203,7 +203,7 @@ export const isValidEmail = (email: string): boolean => {
  * Validate phone number format
  */
 export const isValidPhone = (phone: string): boolean => {
-  const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
+  const phoneRegex = /^\+?[\d\s\-()]+$/;
   return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
 };
 

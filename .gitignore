@@ -29,29 +29,211 @@ dist-ssr
 .env.production
 .env.staging
 .env.development
-.env.test
+.env.backup
+.env.dev
+.env.prod
+.env.real
+.env.actual
+.env.private
+.env.secure
 *.env
 .env.*
+.envrc
+!.env.example
+!.env.test
 
-# API Keys and Secrets
+# API Keys and Secrets Files
 secrets.json
-config/secrets.js
-config/keys.js
+secrets.yaml
+secrets.yml
+secrets.txt
+secrets/
+config/secrets.*
+config/keys.*
+config/production.*
+config/real.*
+config/private.*
+config/secure.*
+credentials.json
+auth.json
+token.json
+private-key.json
+service-account.json
+*-secrets.*
+*-credentials.*
+*-keys.*
+*-real.*
+*-private.*
+*-secure.*
+*-production.*
 
-# Supabase local files
-supabase/.temp
-supabase/.branches
+# Database and Connection Strings
+database.env
+db.env
+connection.env
+*-connection.*
+*-database.*
+*.db.env
+*.database.env
 
-# Development and Testing Files
+# Third-party Service Keys and Configs
+*.key
+*.pem
+*.p12
+*.crt
+*.cert
+sendgrid.key
+sendgrid.env
+stripe.key
+stripe.env
+twilio.key
+twilio.env
+aws.key
+aws.env
+google-cloud.key
+google-cloud.env
+firebase-adminsdk.json
+firebase-config.json
+supabase-config.json
+supabase-real.json
+
+# Email Service Configurations
+sendgrid-config.*
+mailgun-config.*
+ses-config.*
+smtp-config.*
+email-config.*
+
+# Payment Service Keys
+stripe-live.*
+stripe-prod.*
+paypal-live.*
+square-prod.*
+
+# OAuth and Authentication
+oauth.json
+oauth-config.json
+auth-config.json
+jwt-secret.json
+session-secret.json
+refresh-token.*
+access-token.*
+
+# Cloud Provider Credentials
+aws-credentials.*
+gcp-credentials.*
+azure-credentials.*
+digitalocean-credentials.*
+vercel-credentials.*
+netlify-credentials.*
+
+# SSL Certificates and Private Keys
+*.pkey
+*.private
+*.ssl
+ssl/
+certificates/
+certs/
+
+# Deployment Secrets
+deploy-config.*
+deployment-secrets.*
+production-config.*
+staging-config.*
+
+# Analytics and Monitoring Keys
+google-analytics.*
+hotjar-config.*
+sentry-config.*
+datadog-config.*
+newrelic-config.*
+
+# CDN and Storage Keys
+cloudinary-config.*
+s3-config.*
+cloudflare-config.*
+
+# Temporary and Test Files with Secrets
 *-test.js
+*-test.ts
 email-test.*
 test-*.js
-*.test.local.js
+*.test.local.*
+debug-*.js
+temp-*.js
+scratch.*
+local-test.*
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
 
 # IDE and Tool Files
 .bolt/
 .cursor/
 .windsurf/
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/.ropeproject
+*.swp
+*.swo
+*~
+
+# Security and Analysis Tools
+.snyk
+security-report.html
+vulnerability-report.json
+audit-results.json
 
 # Build artifacts
 dev-dist/
+
+# Specific secret-containing files (add any you create)
+supabase-secrets.json
+email-secrets.json
+api-keys.json
+production-secrets.json
+real-env-vars.txt
+actual-credentials.json
+live-config.json
+prod-config.json
+
+# IDE configurations with potential secrets
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.idea/workspace.xml
+*.sublime-workspace
+
+# MacOS specific files that might contain secrets
+.DS_Store/.env
+*.dmg.env
+
+# Windows specific files
+desktop.ini.env
+Thumbs.db.env
+
+# Any files ending with sensitive keywords
+*password*
+*secret*
+*private*
+*credential*
+*token*
+*key*
+!package-lock.json
+!yarn.lock
+!*.test.*
+!src/**
+!docs/**
+!README*

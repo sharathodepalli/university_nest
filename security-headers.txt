@@ -1,0 +1,20 @@
+# Security Configuration for Production
+# Add these headers to your hosting platform (Vercel, Netlify, etc.)
+
+# Headers for enhanced security
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 1; mode=block
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), bluetooth=(), usb=()
+
+# Content Security Policy (CSP) - Production Ready
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' *.supabase.co xiqcdrjwfovlvppokicw.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; connect-src 'self' https: wss: *.supabase.co xiqcdrjwfovlvppokicw.supabase.co; font-src 'self' https://fonts.gstatic.com data:; object-src 'none'; base-uri 'self'; form-action 'self'; media-src 'self' blob: data:
+
+# HSTS (HTTPS only) - Production
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+
+# Additional Security Headers
+Cross-Origin-Embedder-Policy: credentialless
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Resource-Policy: same-origin
