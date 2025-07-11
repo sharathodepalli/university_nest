@@ -43,6 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSupabaseReady, setIsSupabaseReady] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   useEffect(() => {
     const checkSupabase = async () => {
@@ -87,7 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setSupabaseUser(newSession?.user ?? null);
 
           if (newSession?.user) {
-            await fetchUserProfile(newSession.user.id);
+            await fetchUserProfile(newSession.user.id, isRegistering);
           } else {
             setUser(null);
           }
@@ -106,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkSupabase();
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (userId: string, skipAutoCreate = false) => {
     try {
       const { data, error, status } = await supabase
         .from("profiles")
@@ -115,7 +116,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       if (error && status === 406) {
-        // Profile does not exist, let's create it.
+        // Profile does not exist
+        if (skipAutoCreate) {
+          console.log(
+            `[AuthContext] Profile not found for user ${userId}, skipping auto-creation.`
+          );
+          setUser(null);
+          return;
+        }
+
+        // Auto-create profile only if not during registration
         console.warn(
           `[AuthContext] Profile not found for user ${userId}. Creating one.`
         );
@@ -187,41 +197,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       throw new Error("Email and password are required for registration.");
     }
 
-    // Step 1: Sign up the user in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    setIsRegistering(true);
 
-    if (authError) {
-      throw authError;
+    try {
+      // Step 1: Sign up the user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (authError) {
+        throw authError;
+      }
+      if (!authData.user) {
+        throw new Error("Registration failed: no user returned.");
+      }
+
+      // Step 2: Manually create the profile in the public.profiles table
+      const defaultName = email.split("@")[0] || "New User";
+      const { error: profileError } = await supabase.from("profiles").insert({
+        id: authData.user.id,
+        email: authData.user.email,
+        name: profileData.name || defaultName,
+        university: profileData.university || "Not specified",
+        year: profileData.year || "Not specified",
+        bio: profileData.bio || "",
+        ...profileData,
+      });
+
+      if (profileError) {
+        console.error("Failed to create user profile:", profileError);
+        throw profileError;
+      }
+
+      // Step 3: Fetch the newly created profile to update the context
+      await fetchUserProfile(authData.user.id, true); // Skip auto-create since we just created it
+    } finally {
+      setIsRegistering(false);
     }
-    if (!authData.user) {
-      throw new Error("Registration failed: no user returned.");
-    }
-
-    // Step 2: Manually create the profile in the public.profiles table
-    const defaultName = email.split("@")[0] || "New User";
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: authData.user.id,
-      email: authData.user.email,
-      name: profileData.name || defaultName,
-      university: profileData.university || "Not specified",
-      year: profileData.year || "Not specified",
-      bio: profileData.bio || "",
-      ...profileData,
-    });
-
-    if (profileError) {
-      // This is a critical error. We should ideally handle this case,
-      // perhaps by deleting the auth user if the profile creation fails.
-      // For now, we'll just throw the error.
-      console.error("Failed to create user profile:", profileError);
-      throw profileError;
-    }
-
-    // Step 3: Fetch the newly created profile to update the context
-    await fetchUserProfile(authData.user.id);
   };
 
   const logout = async () => {
