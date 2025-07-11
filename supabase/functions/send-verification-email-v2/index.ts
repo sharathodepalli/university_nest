@@ -1,105 +1,403 @@
-// @ts-ignore: Deno imports are handled by Deno runtime
-import { serve } from "https://deno.land/std@0.178.0/http/server.ts";
-// @ts-ignore: Deno imports are handled by Deno runtime
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.42.0";
-// @ts-ignore: Deno imports are handled by Deno runtime
-import { Resend } from "https://esm.sh/resend@1.1.0";
+import { Database as DB } from './database'; // Assuming you have a separate database.ts or this is a consolidated file
 
-// @ts-ignore: Deno is available in Deno runtime
-declare const Deno: any;
+// --- Frontend-facing User and Listing Interfaces (CamelCase) ---
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  university: string;
+  year: string;
+  bio: string;
+  profilePicture?: string;
+  verified: boolean;
+  student_verified?: boolean;
+  student_email?: string;
+  verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected';
+  verification_method?: string;
+  verified_at?: Date;
+  createdAt: Date;
+  phone?: string;
+  preferences?: {
+    smokingAllowed: boolean;
+    petsAllowed: boolean;
+    studyFriendly: boolean;
+    socialLevel: 'quiet' | 'moderate' | 'social';
+    maxBudget?: number;
+    preferredRoomTypes?: string[];
+    preferredAmenities?: string[];
+  };
+  location?: {
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+  };
+  matchingPreferences?: { // This is camelCase for the frontend User interface
+    maxDistance: number; // in miles
+    sameUniversity: boolean;
+    similarYear: boolean;
+    budgetRange: {
+      min: number;
+      max: number;
+    };
+  };
+}
 
-console.log("Send verification email Edge Function started!");
+export interface Listing {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  location: {
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+    nearbyUniversities: { name: string; distance: number }[];
+  };
+  roomType: 'single' | 'shared' | 'studio' | 'apartment';
+  amenities: string[];
+  images: string[];
+  availableFrom: Date;
+  availableTo?: Date;
+  maxOccupants: number;
+  hostId: string;
+  host: User;
+  createdAt: Date;
+  updatedAt: Date;
+  status: 'active' | 'inactive' | 'rented';
+  preferences: {
+    gender?: 'male' | 'female' | 'any';
+    smokingAllowed: boolean;
+    petsAllowed: boolean;
+    studyFriendly: boolean;
+    ageRange?: {
+      min: number;
+      max: number;
+    };
+    yearPreference?: string[];
+  };
+  rules?: string[];
+  deposit?: number;
+  utilities?: {
+    included: boolean;
+    cost?: number;
+  };
+  matchScore?: number; // Calculated based on user preferences
+  relevanceScore?: number; // Based on location, university, etc.
+}
 
-serve(async (req) => {
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
-      headers: { "Content-Type": "application/json" },
-      status: 405,
-    });
-  }
+export interface SearchFilters {
+  query?: string;
+  location?: string;
+  university?: string | { custom: string };
+  maxDistance?: number;
+  priceRange?: { min?: number; max?: number };
+  roomType?: string[];
+  amenities?: string[];
+  moveInDate?: string;
+  availableFrom?: Date;
+  sortBy?: 'relevance' | 'price' | 'date';
+}
 
-  const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+export interface Message {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  listingId: string;
+  content: string;
+  timestamp: Date;
+  read: boolean;
+  type: 'text' | 'image' | 'system';
+}
 
-  try {
-    const { email, verificationToken, studentName, userId } = await req.json(); // Added userId to payload
+export interface Conversation {
+  id: string;
+  participants: User[];
+  listing: Listing;
+  messages: Message[];
+  lastMessage: Message;
+  updatedAt: Date;
+  unreadCount: number;
+}
 
-    if (!email || !verificationToken || !userId) {
-      return new Response(
-        JSON.stringify({ error: "Missing email, verificationToken, or userId" }),
-        { headers: { "Content-Type": "application/json" }, status: 400 }
-      );
-    }
+export interface MatchingCriteria {
+  university: string;
+  location: {
+    city: string;
+    state: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+  };
+  maxDistance: number;
+  budgetRange: {
+    min: number;
+    max: number;
+  };
+  preferences: {
+    roomTypes: string[];
+    amenities: string[];
+    lifestyle: {
+      smokingAllowed: boolean;
+      petsAllowed: boolean;
+      studyFriendly: boolean;
+      socialLevel: 'quiet' | 'moderate' | 'social';
+    };
+  };
+}
 
-    // Initialize Supabase client with service_role key to bypass RLS
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+export interface Notification {
+  id: string;
+  userId: string;
+  type: 'message' | 'listing_inquiry' | 'listing_update' | 'system' | 'new_match';
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: Date;
+  actionUrl?: string;
+  metadata?: any;
+}
 
-    // FIX: Insert the verification token record into the database from the Edge Function
-    // This resolves the 403 Forbidden error on the client side during insertion.
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
-    const { data: tokenRecord, error: dbError } = await supabaseAdmin
-      .from("email_verification_tokens")
-      .insert({
-        user_id: userId,
-        email: email.toLowerCase().trim(),
-        token_hash: verificationToken, // Store the token here for verification later
-        expires_at: expiresAt.toISOString(),
-        status: "pending",
-      })
-      .select()
-      .single();
+export interface UniversityData {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  country: string;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+  studentCount: number;
+  popularAreas: string[];
+  averageRent: {
+    single: number;
+    shared: number;
+    studio: number;
+    apartment: number;
+  };
+}
 
-    if (dbError) {
-      console.error("Error inserting verification token:", dbError);
-      return new Response(
-        JSON.stringify({ error: "Failed to create verification token record" }),
-        { headers: { "Content-Type": "application/json" }, status: 500 }
-      );
-    }
-
-    // Send the email using Resend
-    const { data, error: resendError } = await resend.emails.send({
-      from: "UniNest <onboarding@resend.dev>",
-      to: email,
-      subject: "Verify Your UniNest Student Email",
-      html: `
-        <h1>Hello ${studentName || "Student"},</h1>
-        <p>Thank you for registering with UniNest. Please verify your student email by clicking the link below:</p>
-        <p><a href="${Deno.env.get("VERIFICATION_REDIRECT_URL")}?token=${verificationToken}">Verify Email</a></p>
-        <p>This link will expire in 24 hours.</p>
-        <p>If you did not request this, please ignore this email.</p>
-      `,
-    });
-
-    if (resendError) {
-      console.error("Resend email error:", resendError);
-      // It's important to update the token status if email sending fails.
-      await supabaseAdmin
-        .from("email_verification_tokens")
-        .update({ status: "failed" })
-        .eq("id", tokenRecord.id); // Use the ID of the record we just inserted.
-
-      return new Response(
-        JSON.stringify({ error: "Failed to send verification email" }),
-        { headers: { "Content-Type": "application/json" }, status: 500 }
-      );
-    }
-
-    console.log("Verification email sent:", data);
-    return new Response(
-      JSON.stringify({ message: "Verification email sent successfully" }),
-      {
-        headers: { "Content-Type": "application/json" },
-        status: 200,
-      }
-    );
-  } catch (error) {
-    console.error("Error in Edge Function:", error.message);
-    return new Response(
-      JSON.stringify({ error: error.message || "Internal Server Error" }),
-      { headers: { "Content-Type": "application/json" }, status: 500 }
-    );
-  }
-});
+// --- Supabase Database Schema Types (Snake_Case for columns) ---
+// Note: If you have a separate `src/types/database.ts` file generated by Supabase,
+// it's usually better to import that. For now, I'm modifying the definition
+// as it was provided embedded here.
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: {
+          id: string;
+          name: string;
+          university: string;
+          year: string;
+          bio: string;
+          phone: string | null;
+          verified: boolean;
+          student_verified: boolean | null;
+          student_email: string | null;
+          verification_status: 'unverified' | 'pending' | 'verified' | 'rejected' | null;
+          verification_method: string | null;
+          verified_at: string | null;
+          profile_picture: string | null;
+          preferences: any; // jsonb
+          created_at: string;
+          updated_at: string;
+          email?: string | null;
+          location: any | null;
+          matching_preferences: any | null; // FIXED: Changed from matchingPreferences to matching_preferences
+        };
+        Insert: {
+          id: string;
+          name: string;
+          university: string;
+          year: string;
+          bio?: string;
+          phone?: string | null;
+          verified?: boolean;
+          student_verified?: boolean | null;
+          student_email?: string | null;
+          verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected' | null;
+          verification_method?: string | null;
+          verified_at?: string | null;
+          profile_picture?: string | null;
+          preferences?: any;
+          created_at?: string;
+          updated_at?: string;
+          email?: string | null;
+          location?: any | null;
+          matching_preferences?: any | null; // FIXED: Changed from matchingPreferences to matching_preferences
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          university?: string;
+          year?: string;
+          bio?: string;
+          phone?: string | null;
+          verified?: boolean;
+          student_verified?: boolean | null;
+          student_email?: string | null;
+          verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected' | null;
+          verification_method?: string | null;
+          verified_at?: string | null;
+          profile_picture?: string | null;
+          preferences?: any;
+          created_at?: string;
+          updated_at?: string;
+          email?: string | null;
+          location?: any | null;
+          matching_preferences?: any | null; // FIXED: Changed from matchingPreferences to matching_preferences
+        };
+      };
+      listings: {
+        Row: {
+          id: string;
+          title: string;
+          description: string;
+          price: number;
+          location: any; // jsonb
+          room_type: 'single' | 'shared' | 'studio' | 'apartment';
+          amenities: string[];
+          images: string[];
+          available_from: string;
+          available_to: string | null;
+          max_occupants: number;
+          host_id: string;
+          status: 'active' | 'inactive' | 'rented';
+          preferences: any; // jsonb
+          rules: string[];
+          deposit: number | null;
+          utilities: any; // jsonb
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description: string;
+          price: number;
+          location: any;
+          room_type: 'single' | 'shared' | 'studio' | 'apartment';
+          amenities?: string[];
+          images?: string[];
+          available_from: string;
+          available_to?: string | null;
+          max_occupants?: number;
+          host_id: string;
+          status?: 'active' | 'inactive' | 'rented';
+          preferences?: any;
+          rules?: string[];
+          deposit?: number | null;
+          utilities?: any;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string;
+          price?: number;
+          location?: any;
+          room_type?: 'single' | 'shared' | 'studio' | 'apartment';
+          amenities?: string[];
+          images?: string[];
+          available_from?: string;
+          available_to?: string | null;
+          max_occupants?: number;
+          host_id?: string;
+          status?: 'active' | 'inactive' | 'rented';
+          preferences?: any;
+          rules?: string[];
+          deposit?: number | null;
+          utilities?: any;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      conversations: {
+        Row: {
+          id: string;
+          listing_id: string;
+          participant_1: string;
+          participant_2: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          listing_id: string;
+          participant_1: string;
+          participant_2: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          listing_id?: string;
+          participant_1?: string;
+          participant_2?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          sender_id: string;
+          content: string;
+          message_type: 'text' | 'image' | 'system';
+          read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          sender_id: string;
+          content: string;
+          message_type?: 'text' | 'image' | 'system';
+          read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          conversation_id?: string;
+          sender_id?: string;
+          content?: string;
+          message_type?: 'text' | 'image' | 'system';
+          read?: boolean;
+          created_at?: string;
+        };
+      };
+      favorites: {
+        Row: {
+          id: string;
+          user_id: string;
+          listing_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          listing_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          listing_id?: string;
+          created_at?: string;
+        };
+      };
+    };
+  };
+}

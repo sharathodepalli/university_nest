@@ -7,7 +7,7 @@ import {
 } from "react";
 import { User as SupabaseAuthUser, Session } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
-import { User } from "../types";
+import { User } from "../types"; // Import User from types/index.ts
 import { useTabVisibility } from "../hooks/useTabVisibility";
 
 interface AuthContextType {
@@ -133,12 +133,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Separate useEffect for tab visibility to avoid dependency issues
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!document.hidden && supabaseUser?.id) {
-        console.log("[AuthContext] Tab became visible, refreshing user data");
-        // Use a small delay to avoid immediate conflicts
+      if (!document.hidden && supabaseUser?.id && user === null) {
+        console.log(
+          "[AuthContext] Tab became visible, user not loaded, refreshing"
+        );
+        // Only refresh if user is not already loaded
         setTimeout(() => {
           fetchUserProfile(supabaseUser.id);
-        }, 100);
+        }, 500);
       }
     };
 
@@ -148,12 +150,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [supabaseUser?.id]); // Only depend on user ID, not the whole session
+  }, [supabaseUser?.id, user]); // Include user state to avoid unnecessary calls
 
   const fetchUserProfile = async (userId: string, skipAutoCreate = false) => {
-    // Throttle rapid successive calls
+    // Less aggressive throttling - only 1 second
     const now = Date.now();
-    if (now - lastFetchTime < 2000) {
+    if (now - lastFetchTime < 1000) {
       console.log("[AuthContext] Throttling profile fetch, too recent");
       return;
     }
@@ -194,7 +196,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data: sessionData, error: sessionError } =
           await supabase.auth.getSession();
         if (sessionError || !sessionData.session) {
-          throw new Error("Could not get session to create profile.");
+          console.error(
+            "[AuthContext] Could not get session for profile creation:",
+            sessionError
+          );
+          setUser(null);
+          return;
         }
 
         const userToCreate = sessionData.session.user;
@@ -214,6 +221,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           student_email: null,
           verification_method: null,
           verified_at: null,
+          // Ensure matching_preferences is set for new profiles
+          matching_preferences: null, // Default to null for new profiles, matches DB schema
         });
 
         if (createError) {
@@ -276,6 +285,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           `[AuthContext] Profile found and set for user ${userId}:`,
           data.name
         );
+        // Cast to User, assuming Supabase data from select * is directly compatible
+        // with User type, with proper mapping for snake_case to camelCase
         setUser(data as User);
       } else {
         console.warn(
@@ -348,7 +359,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Step 2: Manually create the profile in the public.profiles table
       const defaultName = email.split("@")[0] || "New User";
-      const { error: profileError } = await supabase.from("profiles").insert({
+
+      // Prepare profile data, mapping camelCase to snake_case for DB
+      const profileToInsert: any = {
+        // Using `any` for flexible property assignment
         id: userId,
         email: authData.user.email,
         name: profileData.name || defaultName,
@@ -362,13 +376,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         student_email: null,
         verification_method: null,
         verified_at: null,
-        // Apply any other profile data AFTER setting defaults
         phone: profileData.phone || null,
-        profilePicture: profileData.profilePicture || null,
+        profile_picture: profileData.profilePicture || null, // Map profilePicture to profile_picture
         location: profileData.location || null,
         preferences: profileData.preferences || null,
-        matchingPreferences: profileData.matchingPreferences || null,
-      });
+      };
+
+      // Map matchingPreferences (camelCase) to matching_preferences (snake_case)
+      if (profileData.matchingPreferences !== undefined) {
+        profileToInsert.matching_preferences = profileData.matchingPreferences;
+      } else {
+        profileToInsert.matching_preferences = null; // Default to null if not provided
+      }
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert(profileToInsert);
 
       if (profileError) {
         // Handle race condition: if profile already exists, just continue
@@ -409,9 +432,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateProfile = async (updates: Partial<User>) => {
     if (!supabaseUser) throw new Error("No user logged in");
+
+    // Create a new object for database update, mapping camelCase to snake_case
+    // We use `Omit` to remove the camelCase `profilePicture` and `matchingPreferences`
+    // and then add their snake_case counterparts.
+    type UpdatesForDb = Omit<
+      Partial<User>,
+      "profilePicture" | "matchingPreferences"
+    > & {
+      profile_picture?: string | null;
+      matching_preferences?: (typeof updates)["matchingPreferences"];
+    };
+
+    const updatesForDb: UpdatesForDb = { ...updates };
+
+    if (updates.profilePicture !== undefined) {
+      updatesForDb.profile_picture = updates.profilePicture;
+      delete updatesForDb.profilePicture;
+    }
+
+    if (updates.matchingPreferences !== undefined) {
+      updatesForDb.matching_preferences = updates.matchingPreferences;
+      delete updatesForDb.matchingPreferences; // Remove the camelCase key
+    }
+
     const { data, error } = await supabase
       .from("profiles")
-      .update(updates)
+      .update(updatesForDb) // Use the mapped object
       .eq("id", supabaseUser.id)
       .select()
       .single();
@@ -420,7 +467,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       throw error;
     }
     if (data) {
-      setUser(data as User);
+      setUser(data as User); // Assuming data returned from DB is compatible with User after mapping
     }
   };
 
