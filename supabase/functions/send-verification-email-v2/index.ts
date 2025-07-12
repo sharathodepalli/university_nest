@@ -4,7 +4,24 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.42.0";
 // Define the main handler for the Edge Function
+// This code is for your Supabase Edge Function: send-verification-email-v2/index.ts
+// REPLACE THE ENTIRE CONTENT OF YOUR FILE WITH THIS.
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0';
+
+// Define CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*', // IMPORTANT: In production, change '*' to your specific frontend URL (e.g., 'https://university-nest.vercel.app')
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     const { userId, email, verificationType, metadata, expiresInMinutes, baseUrl, verificationToken } = await req.json();
 
@@ -12,12 +29,6 @@ Deno.serve(async (req) => {
     console.log("Edge Function: Input data:", { userId, email, verificationType, verificationToken: verificationToken ? '***masked***' : 'N/A' });
 
     // Initialize Supabase client within the Edge Function using service role key
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' // IMPORTANT: Use SERVICE_ROLE_KEY for database writes
-    );
-
-    // Ensure all required environment variables are set
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY');
@@ -26,14 +37,14 @@ Deno.serve(async (req) => {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SENDGRID_API_KEY) {
       console.error("Edge Function: Missing required environment variables.");
       return new Response(JSON.stringify({ success: false, message: "Server configuration error: Missing environment variables." }), {
-        headers: { "Content-Type": "application/json" },
+        headers: corsHeaders, // Include CORS headers in error response
         status: 500,
       });
     }
 
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
     // --- Token Hashing for Security ---
-    // Hash the token BEFORE storing it. This is a critical security measure.
-    // The verify_email_token SQL function will need to hash its input before comparison.
     console.log("Edge Function: Hashing token...");
     const tokenBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verificationToken));
     const tokenHash = Array.from(new Uint8Array(tokenBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -52,13 +63,13 @@ Deno.serve(async (req) => {
         expires_at: expiresAt,
         status: 'pending'
       })
-      .select() // Select the inserted row to confirm
+      .select()
       .single();
 
     if (insertError) {
       console.error("Edge Function: Error inserting token:", insertError.message, insertError.details);
       return new Response(JSON.stringify({ success: false, message: `Failed to store verification token: ${insertError.message}` }), {
-        headers: { "Content-Type": "application/json" },
+        headers: corsHeaders, // Include CORS headers in error response
         status: 500,
       });
     }
@@ -96,21 +107,21 @@ Deno.serve(async (req) => {
       const sendgridErrorText = await sendgridResponse.text();
       console.error("Edge Function: SendGrid email failed to send:", sendgridResponse.status, sendgridErrorText);
       return new Response(JSON.stringify({ success: false, message: `Failed to send email: ${sendgridResponse.statusText} - ${sendgridErrorText}` }), {
-        headers: { "Content-Type": "application/json" },
+        headers: corsHeaders, // Include CORS headers in error response
         status: 500,
       });
     }
     console.log("Edge Function: Verification email sent successfully via SendGrid.");
 
     return new Response(JSON.stringify({ success: true, message: 'Verification email sent successfully!' }), {
-      headers: { "Content-Type": "application/json" },
+      headers: corsHeaders, // Include CORS headers in successful response
       status: 200,
     });
 
   } catch (error: any) {
     console.error("Edge Function: Unexpected error during execution:", error.message || error);
     return new Response(JSON.stringify({ success: false, message: `An unexpected server error occurred: ${error.message || 'Unknown error'}` }), {
-      headers: { "Content-Type": "application/json" },
+      headers: corsHeaders, // Include CORS headers in general catch-all error response
       status: 500,
     });
   }
