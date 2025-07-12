@@ -89,7 +89,7 @@ class VerificationService {
         }
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Verification request error:', error);
       return {
         success: false,
@@ -106,9 +106,9 @@ class VerificationService {
       console.log(`[VerificationService] Calling verify_email_token with token: ${token}`);
       
       // Call database function to verify token
-      // FIX: Ensure the RPC parameter name matches the SQL function definition ('token_input')
+      // CORRECTED: Changed RPC parameter name from 'token_input' to 'token_hash' to match SQL function definition
       const { data, error } = await supabase
-        .rpc('verify_email_token', { token_input: token }); // CHANGED FROM token_hash TO token_input
+        .rpc('verify_email_token', { token_hash: token }); // CHANGED FROM token_input TO token_hash
 
       console.log(`[VerificationService] Database response:`, { data, error });
 
@@ -138,6 +138,8 @@ class VerificationService {
         };
       }
 
+      // CORRECTED: Assuming the backend RPC will now return named columns 'status' and 'message'.
+      // This part depends on the next fix for the Supabase SQL function.
       if (result.status !== 'verified') { // Check the actual status returned by the RPC function
         return {
           success: false,
@@ -162,7 +164,7 @@ class VerificationService {
         }
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Token verification unexpected error:', error);
       return {
         success: false,
@@ -217,7 +219,7 @@ class VerificationService {
         data: status
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching verification status:', error);
       return {
         success: false,
@@ -273,7 +275,7 @@ class VerificationService {
         message: result.message || 'Verification email sent successfully'
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Email sending error:', error);
       return {
         success: false,
@@ -337,26 +339,11 @@ class VerificationService {
       }
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.warn('Failed to retrieve cached verification data:', error);
       return null;
     }
   }
-
-  // CORRECTED: Removed the unused 'clearVerificationCache' function.
-  // private clearVerificationCache(userId: string): void {
-  //   try {
-  //     localStorage.removeItem(`${this.CACHE_PREFIX}${userId}`);
-  //     // Also clear any old localStorage keys
-  //     Object.keys(localStorage).forEach(key => {
-  //       if (key.includes('verification_request_')) {
-  //         localStorage.removeItem(key);
-  //       }
-  //     });
-  //   } catch (error) {
-  //     console.warn('Failed to clear verification cache:', error);
-  //   }
-  // }
 
   /**
    * Clear all verification and user caches to force fresh data
@@ -382,7 +369,7 @@ class VerificationService {
       }
       
       console.log('🧹 All verification caches cleared');
-    } catch (error) {
+    } catch (error: any) {
       console.warn('Failed to clear all caches:', error);
     }
   }
@@ -432,12 +419,12 @@ class VerificationService {
                 console.log(`🧹 Cleared stale cache: ${key}`);
               }
             }
-          } catch {
+          } catch (error) { // Catch potential parsing errors
             localStorage.removeItem(key);
           }
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.warn('Failed to clear stale caches:', error);
     }
   }
@@ -448,7 +435,7 @@ class VerificationService {
   async cleanupExpiredVerifications(): Promise<void> {
     try {
       await supabase.rpc('cleanup_expired_verifications');
-    } catch (error) {
+    } catch (error: any) {
       console.warn('Failed to cleanup expired verifications:', error);
     }
   }

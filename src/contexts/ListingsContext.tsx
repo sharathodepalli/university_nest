@@ -9,14 +9,14 @@ import React, {
 } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthContext";
-import { Listing, SearchFilters, User } from "../types";
-import { mockListings } from "../data/mockData";
-import MatchingService from "../lib/matching";
-import { errorHandler } from "../lib/errorHandler";
-import { performanceMonitor } from "../lib/performance";
-import { updateListingsWithRealAddresses } from "../lib/realAddressIntegration";
-import { calculateDistance } from "../utils/haversine";
-import { universityData, getNearbyUniversities } from "../data/universities";
+import { Listing, SearchFilters, User } from "../types"; // User imported
+import { mockListings } from "../data/mockData"; // Imported mockListings
+import MatchingService from "../lib/matching"; // Imported MatchingService
+import { errorHandler } from "../lib/errorHandler"; // Imported errorHandler
+import { performanceMonitor } from "../lib/performance"; // Imported performanceMonitor
+import { updateListingsWithRealAddresses } from "../lib/realAddressIntegration"; // Imported updateListingsWithRealAddresses
+import { calculateDistance } from "../utils/haversine"; // Imported calculateDistance
+import { universityData, getNearbyUniversities } from "../data/universities"; // Imported universityData, getNearbyUniversities
 import { useTabVisibility } from "../hooks/useTabVisibility";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 
@@ -154,7 +154,7 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
             profile_picture,
             preferences,
             location,
-            matching_preferences, /* Corrected column name */
+            matching_preferences, /* REMOVED COMMENT HERE */
             created_at
           )
         `
@@ -406,7 +406,8 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
 
               const nearbyUniversityMatch = (
                 listing.location?.nearbyUniversities || []
-              ).some((uni) => uni.name.toLowerCase() === lowercasedUniversity);
+              ) // Ensure it's an array
+                .some((uni) => uni.name.toLowerCase() === lowercasedUniversity);
 
               return hostUniversityMatch || nearbyUniversityMatch;
             }
