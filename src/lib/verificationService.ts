@@ -129,6 +129,8 @@ class VerificationService {
 
       const result = data[0];
       console.log(`[VerificationService] Parsed result:`, result);
+      console.log(`[VerificationService] Result status:`, result?.status);
+      console.log(`[VerificationService] Result message:`, result?.message);
       
       if (!result) {
         return {
@@ -137,15 +139,16 @@ class VerificationService {
         };
       }
 
-      // CORRECTED: Assuming the backend RPC will now return named columns 'status' and 'message'.
-      // This part depends on the next fix for the Supabase SQL function.
-      if (result.status !== 'verified') { // Check the actual status returned by the RPC function
+      // Check the actual status returned by the RPC function
+      if (result.status !== 'verified') {
+        console.log(`[VerificationService] Status check failed. Expected: 'verified', Got: '${result.status}'`);
         return {
           success: false,
           message: result.message || 'Invalid or expired verification token'
         };
       }
 
+      console.log(`[VerificationService] Verification successful!`);
       // Clear cached data
       // The RPC function (verify_email_token) does not return user_id directly in the success path,
       // it returns the verified email. We should rely on AuthContext to refresh the user profile

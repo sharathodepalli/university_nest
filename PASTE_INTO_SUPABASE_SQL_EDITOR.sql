@@ -48,8 +48,14 @@ TO authenticated
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
--- Create RPC function for email verification
+-- Create RPC function for email verification (without pgcrypto dependency)
 -- This function verifies an email token and updates user status
+
+-- First, drop the existing function if it exists with different signature
+DROP FUNCTION IF EXISTS verify_email_token(text);
+DROP FUNCTION IF EXISTS verify_email_token(TEXT);
+
+-- Create the new function using built-in sha256 function
 CREATE OR REPLACE FUNCTION verify_email_token(token_input TEXT)
 RETURNS TABLE(status TEXT, message TEXT, user_id UUID)
 LANGUAGE plpgsql
@@ -60,22 +66,22 @@ DECLARE
   token_record email_verification_tokens%ROWTYPE;
   token_hash_computed TEXT;
 BEGIN
-  -- Compute hash of the input token to match stored hash
-  SELECT encode(digest(token_input, 'sha256'), 'hex') INTO token_hash_computed;
+  -- Compute hash of the input token using built-in sha256
+  SELECT encode(sha256(token_input::bytea), 'hex') INTO token_hash_computed;
   
-  -- Find the token using the computed hash
-  SELECT * INTO token_record
-  FROM email_verification_tokens
-  WHERE token_hash = token_hash_computed
-    AND status = 'pending'
-    AND expires_at > NOW();
+  -- Find the token using the computed hash (use table alias to avoid column conflicts)
+  SELECT evt.* INTO token_record
+  FROM email_verification_tokens evt
+  WHERE evt.token_hash = token_hash_computed
+    AND evt.status = 'pending'
+    AND evt.expires_at > NOW();
 
   -- Check if token exists and is valid
   IF NOT FOUND THEN
     -- Check if token exists but is expired/used
-    SELECT * INTO token_record
-    FROM email_verification_tokens
-    WHERE token_hash = token_hash_computed;
+    SELECT evt.* INTO token_record
+    FROM email_verification_tokens evt
+    WHERE evt.token_hash = token_hash_computed;
     
     IF FOUND THEN
       IF token_record.status != 'pending' THEN
@@ -121,3 +127,44 @@ $$;
 
 -- Show confirmation
 SELECT 'Database permissions and verify_email_token function have been created successfully!' as message;
+
+-- If sha256 doesn't work, use this alternative function that enables pgcrypto first:
+/*
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+DROP FUNCTION IF EXISTS verify_email_token(text);
+
+CREATE OR REPLACE FUNCTION verify_email_token(token_input TEXT)
+RETURNS TABLE(status TEXT, message TEXT, user_id UUID)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  token_record email_verification_tokens%ROWTYPE;
+  token_hash_computed TEXT;
+BEGIN
+  SELECT encode(digest(token_input::text, 'sha256'), 'hex') INTO token_hash_computed;
+  
+  SELECT * INTO token_record
+  FROM email_verification_tokens
+  WHERE token_hash = token_hash_computed
+    AND status = 'pending'
+    AND expires_at > NOW();
+
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT 'error'::TEXT, 'Invalid or expired verification token'::TEXT, NULL::UUID;
+    RETURN;
+  END IF;
+
+  UPDATE email_verification_tokens
+  SET status = 'verified', used_at = NOW()
+  WHERE id = token_record.id;
+
+  UPDATE profiles
+  SET verified = TRUE, verification_status = 'verified', verified_at = NOW(), updated_at = NOW()
+  WHERE id = token_record.user_id;
+
+  RETURN QUERY SELECT 'verified'::TEXT, 'Email verified successfully!'::TEXT, token_record.user_id;
+END;
+$$;
+*/
