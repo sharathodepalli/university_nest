@@ -22,56 +22,106 @@ const VerifyEmailPage: React.FC = () => {
   const token = searchParams.get("token");
 
   useEffect(() => {
-    const verify = async () => {
-      if (!token) {
-        setStatus("error");
-        setMessage("Invalid verification link. No token provided.");
-        return;
-      }
+    // Only show the verification page - don't auto-verify
+    if (!token) {
+      setStatus("error");
+      setMessage("Invalid verification link. No token provided.");
+      return;
+    }
 
-      if (hasVerified.current) {
+    // Set initial state to require user interaction
+    setStatus("verifying");
+    setMessage(
+      "Ready to verify your email. Click the button below to complete verification."
+    );
+  }, [token]);
+
+  const handleManualVerification = async () => {
+    if (!token) {
+      setStatus("error");
+      setMessage("Invalid verification link. No token provided.");
+      return;
+    }
+
+    if (hasVerified.current) {
+      console.log(
+        "[VerifyEmailPage] Already verified, skipping duplicate call"
+      );
+      return;
+    }
+
+    hasVerified.current = true;
+    setStatus("loading");
+    setMessage("Verifying your email, please wait...");
+
+    console.log(
+      `[VerifyEmailPage] Manual verification started for token: ${token}`
+    );
+
+    try {
+      // The service calls the backend function which is SECURITY DEFINER,
+      // so it doesn't require a session to run the update.
+      const result = await verificationService.verifyEmailToken(token);
+
+      console.log("[VerifyEmailPage] Verification result:", result);
+
+      if (result.success) {
         console.log(
-          "[VerifyEmailPage] Already verified, skipping duplicate call"
+          "[VerifyEmailPage] Verification successful in backend.",
+          result
         );
-        return;
-      }
+        setStatus("success");
 
-      hasVerified.current = true;
-      console.log(`[VerifyEmailPage] Attempting to verify token: ${token}`);
-
-      try {
-        // The service calls the backend function which is SECURITY DEFINER,
-        // so it doesn't require a session to run the update.
-        const result = await verificationService.verifyEmailToken(token);
-
-        console.log("[VerifyEmailPage] Verification result:", result);
-
-        if (result.success) {
+        // Check if a user session is active in the browser
+        if (session?.user && refreshUser) {
           console.log(
-            "[VerifyEmailPage] Verification successful in backend.",
-            result
+            "[VerifyEmailPage] User is logged in. Refreshing user data and redirecting."
           );
-          setStatus("success");
+          setMessage(
+            "Email verification successful! Redirecting to your profile..."
+          );
+          await refreshUser();
+          setTimeout(() => navigate("/profile"), 3000);
+        } else {
+          // If user is NOT logged in, show a message to log in.
+          console.log(
+            "[VerifyEmailPage] User is not logged in. Displaying message to log in."
+          );
+          setMessage(
+            "Your email has been verified! Please log in to your account to see your updated profile."
+          );
+        }
+      } else {
+        // Handle "already used" tokens more gracefully
+        if (result.message && result.message.includes("already been used")) {
+          console.log(
+            "[VerifyEmailPage] Token already used - checking if user is actually verified"
+          );
 
-          // Check if a user session is active in the browser
-          if (session?.user && refreshUser) {
-            console.log(
-              "[VerifyEmailPage] User is logged in. Refreshing user data and redirecting."
-            );
-            setMessage(
-              "Email verification successful! Redirecting to your profile..."
-            );
-            await refreshUser();
-            setTimeout(() => navigate("/profile"), 3000);
-          } else {
-            // If user is NOT logged in, show a message to log in.
-            console.log(
-              "[VerifyEmailPage] User is not logged in. Displaying message to log in."
-            );
-            setMessage(
-              "Your email has been verified! Please log in to your account to see your updated profile."
-            );
+          // Check if the user is actually verified in their profile
+          if (session?.user) {
+            try {
+              await refreshUser();
+              // After refresh, check if verification worked
+              setStatus("success");
+              setMessage(
+                "Your email has already been verified! Welcome to UniNest."
+              );
+              setTimeout(() => navigate("/browse"), 2000);
+              return;
+            } catch (refreshError) {
+              console.log(
+                "[VerifyEmailPage] Could not refresh user data:",
+                refreshError
+              );
+            }
           }
+
+          // If no session or refresh failed, show friendly message
+          setStatus("success");
+          setMessage(
+            "Your email has already been verified! Please log in to access your account."
+          );
         } else {
           console.warn(
             "[VerifyEmailPage] Verification failed in backend.",
@@ -83,17 +133,15 @@ const VerifyEmailPage: React.FC = () => {
               "Verification failed. The link may be invalid or expired."
           );
         }
-      } catch (error: unknown) {
-        console.error("[VerifyEmailPage] Unexpected error:", error);
-        setStatus("error");
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-        setMessage(`An unexpected error occurred: ${errorMessage}`);
       }
-    };
-
-    verify();
-  }, [token]); // Only depend on token - avoid re-runs from auth state changes
+    } catch (error: unknown) {
+      console.error("[VerifyEmailPage] Unexpected error:", error);
+      setStatus("error");
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      setMessage(`An unexpected error occurred: ${errorMessage}`);
+    }
+  };
 
   const handleReturnToVerification = () => {
     navigate("/verification");
@@ -113,6 +161,11 @@ const VerifyEmailPage: React.FC = () => {
               <Loader2 className="h-16 w-16 text-blue-500 animate-spin" />
             </div>
           )}
+          {status === "verifying" && (
+            <div className="flex justify-center">
+              <CheckCircle className="h-16 w-16 text-blue-500" />
+            </div>
+          )}
           {status === "success" && (
             <div className="flex justify-center">
               <CheckCircle className="h-16 w-16 text-green-500" />
@@ -128,6 +181,7 @@ const VerifyEmailPage: React.FC = () => {
         {/* Title */}
         <h1 className="text-2xl font-bold text-gray-900 mb-4">
           {status === "loading" && "Verifying Email..."}
+          {status === "verifying" && "Email Verification"}
           {status === "success" && "Email Verified!"}
           {status === "error" && "Verification Failed"}
           {status === "expired" && "Link Expired"}
@@ -142,6 +196,15 @@ const VerifyEmailPage: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="space-y-3">
+          {status === "verifying" && (
+            <button
+              onClick={handleManualVerification}
+              className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              Verify My Email
+            </button>
+          )}
+
           {status === "success" && (
             <button
               onClick={handleGoToDashboard}
@@ -170,6 +233,19 @@ const VerifyEmailPage: React.FC = () => {
         </div>
 
         {/* Additional Info */}
+        {status === "verifying" && (
+          <div className="mt-8 p-4 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700">
+              🔒 We require manual verification to prevent automatic email
+              scanning.
+            </p>
+            <p className="text-xs text-blue-600 mt-2">
+              This ensures your verification link is only used when you actually
+              click it.
+            </p>
+          </div>
+        )}
+
         {status === "success" && (
           <div className="mt-8 p-4 bg-green-50 rounded-lg">
             <p className="text-sm text-green-700">
