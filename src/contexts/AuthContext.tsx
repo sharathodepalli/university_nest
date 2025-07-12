@@ -246,7 +246,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               throw fetchError;
             }
 
-            setUser(existingData as User);
+            // Transform existing profile data
+            const transformedExistingUser: User = {
+              id: existingData.id,
+              name: existingData.name || "",
+              email: existingData.email || "",
+              university: existingData.university || "Not specified",
+              year: existingData.year || "Not specified",
+              bio: existingData.bio || "",
+              profilePicture: existingData.profile_picture || undefined,
+              verified: existingData.verified || false,
+              student_verified: existingData.student_verified || false,
+              student_email: existingData.student_email || undefined,
+              verification_status:
+                existingData.verification_status || "unverified",
+              verification_method:
+                existingData.verification_method || undefined,
+              verified_at: existingData.verified_at
+                ? new Date(existingData.verified_at)
+                : undefined,
+              createdAt: existingData.created_at
+                ? new Date(existingData.created_at)
+                : new Date(),
+              phone: existingData.phone || undefined,
+              preferences: existingData.preferences || undefined,
+              location: existingData.location || undefined,
+              matchingPreferences:
+                existingData.matching_preferences || undefined,
+            };
+
+            setUser(transformedExistingUser);
             return;
           } else {
             console.error(
@@ -268,7 +297,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log(
           `[AuthContext] Profile created and fetched successfully for user ${userId}`
         );
-        setUser(newData as User);
+
+        // Transform the auto-created profile data too
+        const transformedNewUser: User = {
+          id: newData.id,
+          name: newData.name || "",
+          email: newData.email || "",
+          university: newData.university || "Not specified",
+          year: newData.year || "Not specified",
+          bio: newData.bio || "",
+          profilePicture: newData.profile_picture || undefined,
+          verified: newData.verified || false,
+          student_verified: newData.student_verified || false,
+          student_email: newData.student_email || undefined,
+          verification_status: newData.verification_status || "unverified",
+          verification_method: newData.verification_method || undefined,
+          verified_at: newData.verified_at
+            ? new Date(newData.verified_at)
+            : undefined,
+          createdAt: newData.created_at
+            ? new Date(newData.created_at)
+            : new Date(),
+          phone: newData.phone || undefined,
+          preferences: newData.preferences || undefined,
+          location: newData.location || undefined,
+          matchingPreferences: newData.matching_preferences || undefined,
+        };
+
+        setUser(transformedNewUser);
         return;
       }
 
@@ -285,9 +341,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           `[AuthContext] Profile found and set for user ${userId}:`,
           data.name
         );
-        // Cast to User, assuming Supabase data from select * is directly compatible
-        // with User type, with proper mapping for snake_case to camelCase
-        setUser(data as User);
+        console.log("[AuthContext] Raw profile data from database:", data);
+
+        // Transform snake_case database fields to camelCase for frontend
+        const transformedUser: User = {
+          id: data.id,
+          name: data.name || "",
+          email: data.email || "",
+          university: data.university || "Not specified",
+          year: data.year || "Not specified",
+          bio: data.bio || "",
+          profilePicture: data.profile_picture || undefined, // snake_case to camelCase
+          verified: data.verified || false,
+          student_verified: data.student_verified || false,
+          student_email: data.student_email || undefined,
+          verification_status: data.verification_status || "unverified",
+          verification_method: data.verification_method || undefined,
+          verified_at: data.verified_at
+            ? new Date(data.verified_at)
+            : undefined,
+          createdAt: data.created_at ? new Date(data.created_at) : new Date(),
+          phone: data.phone || undefined,
+          preferences: data.preferences || undefined,
+          location: data.location || undefined,
+          matchingPreferences: data.matching_preferences || undefined, // snake_case to camelCase
+        };
+
+        console.log("[AuthContext] Transformed user data:", transformedUser);
+        setUser(transformedUser);
       } else {
         console.warn(
           `[AuthContext] No profile data returned for user ${userId}`
@@ -360,6 +441,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Step 2: Manually create the profile in the public.profiles table
       const defaultName = email.split("@")[0] || "New User";
 
+      console.log("[Register] Profile data received:", profileData);
+
       // Prepare profile data, mapping camelCase to snake_case for DB
       const profileToInsert: any = {
         // Using `any` for flexible property assignment
@@ -382,6 +465,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         preferences: profileData.preferences || null,
       };
 
+      console.log("[Register] Profile data to insert:", profileToInsert);
+
       // Map matchingPreferences (camelCase) to matching_preferences (snake_case)
       if (profileData.matchingPreferences !== undefined) {
         profileToInsert.matching_preferences = profileData.matchingPreferences;
@@ -392,6 +477,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { error: profileError } = await supabase
         .from("profiles")
         .insert(profileToInsert);
+
+      console.log("[Register] Database insert result - error:", profileError);
 
       if (profileError) {
         // Handle race condition: if profile already exists, just continue
@@ -476,7 +563,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       throw error;
     }
     if (data) {
-      setUser(data as User); // Assuming data returned from DB is compatible with User after mapping
+      // Transform the updated profile data
+      const transformedUpdatedUser: User = {
+        id: data.id,
+        name: data.name || "",
+        email: data.email || "",
+        university: data.university || "Not specified",
+        year: data.year || "Not specified",
+        bio: data.bio || "",
+        profilePicture: data.profile_picture || undefined,
+        verified: data.verified || false,
+        student_verified: data.student_verified || false,
+        student_email: data.student_email || undefined,
+        verification_status: data.verification_status || "unverified",
+        verification_method: data.verification_method || undefined,
+        verified_at: data.verified_at ? new Date(data.verified_at) : undefined,
+        createdAt: data.created_at ? new Date(data.created_at) : new Date(),
+        phone: data.phone || undefined,
+        preferences: data.preferences || undefined,
+        location: data.location || undefined,
+        matchingPreferences: data.matching_preferences || undefined,
+      };
+
+      setUser(transformedUpdatedUser);
     }
   };
 

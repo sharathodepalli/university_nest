@@ -165,6 +165,14 @@ const AuthPage: React.FC = () => {
         }, 500);
       } else {
         console.log("Attempting registration with:", formData.email);
+        console.log("Full registration data:", {
+          name: formData.name,
+          email: formData.email,
+          university: dataToValidate.university,
+          year: formData.year,
+          bio: formData.bio,
+        });
+
         await register({
           name: formData.name,
           email: formData.email,
