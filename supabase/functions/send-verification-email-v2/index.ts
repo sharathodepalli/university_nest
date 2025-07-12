@@ -1,44 +1,44 @@
 // @ts-nocheck
 // supabase/functions/send-verification-email-v2/index.ts
-// STEP 2: Test environment variables access
-// Previous step (basic function) worked! Now testing env vars.
+// STEP 3: Test Supabase client initialization
+// Previous steps worked! Now testing if createClient crashes.
 
-// Define CORS headers (essential for frontend to even call it)
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0';
+
+// Define CORS headers
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // In production, change to your specific frontend URL
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests (browser sends OPTIONS first)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Parse JSON body (we know this works from step 1)
     const payload = await req.json();
 
-    // NEW: Test environment variable access - this might be the crash point
+    // Environment variables (we know these work from step 2)
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY');
     const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@yourdomain.com';
 
-    // Check if environment variables are accessible
-    const envStatus = {
-      SUPABASE_URL: SUPABASE_URL ? 'SET' : 'MISSING',
-      SUPABASE_SERVICE_ROLE_KEY: SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING',
-      SENDGRID_API_KEY: SENDGRID_API_KEY ? 'SET' : 'MISSING',
-      FROM_EMAIL: FROM_EMAIL
-    };
+    // NEW: Test Supabase client initialization - this might be the crash point
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Return environment variable status for debugging
+    // If we reach here, Supabase client creation worked
     return new Response(JSON.stringify({ 
       success: true, 
-      message: "Environment variables accessed successfully!",
-      envStatus: envStatus,
+      message: "Supabase client created successfully!",
+      clientInfo: {
+        hasSupabaseUrl: !!SUPABASE_URL,
+        hasServiceKey: !!SUPABASE_SERVICE_ROLE_KEY,
+        clientType: typeof supabaseClient,
+        clientMethods: Object.keys(supabaseClient).slice(0, 5) // Show first 5 methods
+      },
       payload: payload
     }), {
       headers: corsHeaders,
@@ -46,10 +46,11 @@ Deno.serve(async (req) => {
     });
 
   } catch (error: any) {
-    // If anything crashes during env var access
+    // If Supabase client creation crashes
     return new Response(JSON.stringify({ 
       success: false, 
-      message: `Step 2 Crashed (Env Vars): ${error.message || 'Unknown error'}` 
+      message: `Step 3 Crashed (Supabase Client): ${error.message || 'Unknown error'}`,
+      errorStack: error.stack ? error.stack.substring(0, 500) : 'No stack trace'
     }), {
       headers: corsHeaders,
       status: 500,
