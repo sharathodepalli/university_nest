@@ -69,35 +69,36 @@ BEGIN
   -- Compute hash of the input token using built-in sha256
   SELECT encode(sha256(token_input::bytea), 'hex') INTO token_hash_computed;
   
-  -- Find the token using the computed hash (use table alias to avoid column conflicts)
+  -- Find ANY token with this hash first
   SELECT evt.* INTO token_record
   FROM email_verification_tokens evt
-  WHERE evt.token_hash = token_hash_computed
-    AND evt.status = 'pending'
-    AND evt.expires_at > NOW();
+  WHERE evt.token_hash = token_hash_computed;
 
-  -- Check if token exists and is valid
+  -- Check if token exists at all
   IF NOT FOUND THEN
-    -- Check if token exists but is expired/used
-    SELECT evt.* INTO token_record
-    FROM email_verification_tokens evt
-    WHERE evt.token_hash = token_hash_computed;
-    
-    IF FOUND THEN
-      IF token_record.status != 'pending' THEN
-        RETURN QUERY SELECT 'error'::TEXT, 'Token has already been used'::TEXT, NULL::UUID;
-        RETURN;
-      ELSIF token_record.expires_at <= NOW() THEN
-        RETURN QUERY SELECT 'expired'::TEXT, 'Token has expired'::TEXT, NULL::UUID;
-        RETURN;
-      END IF;
-    END IF;
-    
-    RETURN QUERY SELECT 'error'::TEXT, 'Invalid or expired verification token'::TEXT, NULL::UUID;
+    RETURN QUERY SELECT 'error'::TEXT, 'Invalid verification token'::TEXT, NULL::UUID;
     RETURN;
   END IF;
 
-  -- Mark token as used
+  -- Check if token has already been used
+  IF token_record.status = 'verified' THEN
+    RETURN QUERY SELECT 'error'::TEXT, 'Token has already been used'::TEXT, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- Check if token has expired
+  IF token_record.expires_at <= NOW() THEN
+    RETURN QUERY SELECT 'expired'::TEXT, 'Token has expired'::TEXT, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- Check if token is in pending status (should be if we got here)
+  IF token_record.status != 'pending' THEN
+    RETURN QUERY SELECT 'error'::TEXT, 'Token is in invalid state'::TEXT, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- Token is valid - mark it as used
   UPDATE email_verification_tokens
   SET 
     status = 'verified',

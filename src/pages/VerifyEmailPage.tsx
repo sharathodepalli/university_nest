@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react";
 import { verificationService } from "../lib/verificationService";
@@ -15,7 +15,9 @@ const VerifyEmailPage: React.FC = () => {
   const [message, setMessage] = useState(
     "Verifying your email, please wait..."
   );
-  const [hasVerified, setHasVerified] = useState(false);
+
+  // Use useRef instead of useState to prevent race conditions
+  const hasVerified = useRef(false);
 
   const token = searchParams.get("token");
 
@@ -27,14 +29,14 @@ const VerifyEmailPage: React.FC = () => {
         return;
       }
 
-      if (hasVerified) {
+      if (hasVerified.current) {
         console.log(
           "[VerifyEmailPage] Already verified, skipping duplicate call"
         );
         return;
       }
 
-      setHasVerified(true);
+      hasVerified.current = true;
       console.log(`[VerifyEmailPage] Attempting to verify token: ${token}`);
 
       try {
@@ -91,7 +93,7 @@ const VerifyEmailPage: React.FC = () => {
     };
 
     verify();
-  }, [token, session?.user, refreshUser, navigate]); // Include all dependencies
+  }, [token]); // Only depend on token - avoid re-runs from auth state changes
 
   const handleReturnToVerification = () => {
     navigate("/verification");
