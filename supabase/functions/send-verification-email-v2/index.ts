@@ -3,11 +3,6 @@
 // TypeScript checking is disabled for Deno Edge Function compatibility
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.42.0";
-// Define the main handler for the Edge Function
-// This code is for your Supabase Edge Function: send-verification-email-v2/index.ts
-// REPLACE THE ENTIRE CONTENT OF YOUR FILE WITH THIS.
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0';
 
 // Define CORS headers
 const corsHeaders = {
