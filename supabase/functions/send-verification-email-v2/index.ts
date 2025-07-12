@@ -1,7 +1,6 @@
 // @ts-nocheck
 // supabase/functions/send-verification-email-v2/index.ts
-// STEP 4: Test database insertion
-// Previous steps worked! Now testing if DB insert crashes.
+// FINAL VERSION: Handle permissions properly with service role
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0';
 
@@ -20,18 +19,25 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     const { userId, email, verificationToken } = payload;
 
-    // Environment variables (we know these work)
+    // Environment variables
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY');
+    const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@universitynest.com';
 
-    // Supabase client (we know this works)
-    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // Create Supabase client with service role key
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
-    // NEW: Test token hashing (might crash here)
+    // Hash the verification token
     const tokenBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verificationToken));
     const tokenHash = Array.from(new Uint8Array(tokenBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 
-    // NEW: Test database insertion - this is likely the crash point
+    // Insert verification token using service role (should bypass RLS)
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 minutes
 
     const { data: insertData, error: insertError } = await supabaseClient
@@ -47,14 +53,20 @@ Deno.serve(async (req) => {
       .single();
 
     if (insertError) {
-      // Return the specific database error
       return new Response(JSON.stringify({ 
         success: false, 
-        message: `DB Insert Failed: ${insertError.message}`,
+        message: `Database Insert Failed: ${insertError.message}`,
         errorDetails: {
           code: insertError.code,
           details: insertError.details,
-          hint: insertError.hint
+          hint: insertError.hint,
+          message: insertError.message
+        },
+        debugInfo: {
+          userId: userId,
+          email: email,
+          tokenHashLength: tokenHash.length,
+          expiresAt: expiresAt
         }
       }), {
         headers: corsHeaders,
@@ -62,14 +74,59 @@ Deno.serve(async (req) => {
       });
     }
 
-    // If we reach here, database insertion worked!
+    // Send email using SendGrid
+    const emailData = {
+      personalizations: [{
+        to: [{ email: email }],
+        subject: 'Verify Your Email - University Nest'
+      }],
+      from: { email: FROM_EMAIL },
+      content: [{
+        type: 'text/html',
+        value: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Verify Your Email Address</h2>
+            <p>Click the link below to verify your email address:</p>
+            <a href="${SUPABASE_URL.replace('/rest/v1', '')}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}" 
+               style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+              Verify Email
+            </a>
+            <p>This link will expire in 15 minutes.</p>
+            <p>If you didn't create an account, you can safely ignore this email.</p>
+          </div>
+        `
+      }]
+    };
+
+    const emailResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SENDGRID_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(emailData),
+    });
+
+    if (!emailResponse.ok) {
+      const errorText = await emailResponse.text();
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: `SendGrid Error: ${emailResponse.status} - ${errorText}`,
+        note: "Database insert succeeded but email failed"
+      }), {
+        headers: corsHeaders,
+        status: 500,
+      });
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
-      message: "Database insertion successful!",
-      insertResult: {
-        tokenId: insertData?.id,
-        tokenHashLength: tokenHash.length,
-        expiresAt: expiresAt
+      message: "Verification email sent successfully!",
+      details: {
+        tokenCreated: true,
+        emailSent: true,
+        expiresAt: expiresAt,
+        tokenId: insertData?.id
       }
     }), {
       headers: corsHeaders,
@@ -79,7 +136,7 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     return new Response(JSON.stringify({ 
       success: false, 
-      message: `Step 4 Crashed (DB/Hashing): ${error.message || 'Unknown error'}`,
+      message: `Function Error: ${error.message || 'Unknown error'}`,
       errorStack: error.stack ? error.stack.substring(0, 500) : 'No stack trace'
     }), {
       headers: corsHeaders,
