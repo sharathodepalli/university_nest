@@ -24,6 +24,7 @@ Deno.serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY');
     const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@universitynest.com';
+    const APP_URL = Deno.env.get('APP_URL') || 'http://localhost:5173';
 
     // Create Supabase client with service role key
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -87,7 +88,7 @@ Deno.serve(async (req) => {
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2>Verify Your Email Address</h2>
             <p>Click the link below to verify your email address:</p>
-            <a href="${SUPABASE_URL.replace('/rest/v1', '')}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}" 
+            <a href="${APP_URL}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}" 
                style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
               Verify Email
             </a>

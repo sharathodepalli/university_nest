@@ -106,9 +106,8 @@ class VerificationService {
       console.log(`[VerificationService] Calling verify_email_token with token: ${token}`);
       
       // Call database function to verify token
-      // CORRECTED: Changed RPC parameter name from 'token_input' to 'token_hash' to match SQL function definition
       const { data, error } = await supabase
-        .rpc('verify_email_token', { token_hash: token }); // CHANGED FROM token_input TO token_hash
+        .rpc('verify_email_token', { token_input: token });
 
       console.log(`[VerificationService] Database response:`, { data, error });
 

@@ -48,5 +48,76 @@ TO authenticated
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
+-- Create RPC function for email verification
+-- This function verifies an email token and updates user status
+CREATE OR REPLACE FUNCTION verify_email_token(token_input TEXT)
+RETURNS TABLE(status TEXT, message TEXT, user_id UUID)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  token_record email_verification_tokens%ROWTYPE;
+  token_hash_computed TEXT;
+BEGIN
+  -- Compute hash of the input token to match stored hash
+  SELECT encode(digest(token_input, 'sha256'), 'hex') INTO token_hash_computed;
+  
+  -- Find the token using the computed hash
+  SELECT * INTO token_record
+  FROM email_verification_tokens
+  WHERE token_hash = token_hash_computed
+    AND status = 'pending'
+    AND expires_at > NOW();
+
+  -- Check if token exists and is valid
+  IF NOT FOUND THEN
+    -- Check if token exists but is expired/used
+    SELECT * INTO token_record
+    FROM email_verification_tokens
+    WHERE token_hash = token_hash_computed;
+    
+    IF FOUND THEN
+      IF token_record.status != 'pending' THEN
+        RETURN QUERY SELECT 'error'::TEXT, 'Token has already been used'::TEXT, NULL::UUID;
+        RETURN;
+      ELSIF token_record.expires_at <= NOW() THEN
+        RETURN QUERY SELECT 'expired'::TEXT, 'Token has expired'::TEXT, NULL::UUID;
+        RETURN;
+      END IF;
+    END IF;
+    
+    RETURN QUERY SELECT 'error'::TEXT, 'Invalid or expired verification token'::TEXT, NULL::UUID;
+    RETURN;
+  END IF;
+
+  -- Mark token as used
+  UPDATE email_verification_tokens
+  SET 
+    status = 'verified',
+    used_at = NOW()
+  WHERE id = token_record.id;
+
+  -- Update user email verification status in auth.users
+  UPDATE auth.users
+  SET 
+    email_confirmed_at = NOW(),
+    updated_at = NOW()
+  WHERE id = token_record.user_id;
+
+  -- Update user profile verification status
+  UPDATE profiles
+  SET 
+    verified = TRUE,
+    verification_status = 'verified',
+    verified_at = NOW(),
+    updated_at = NOW()
+  WHERE id = token_record.user_id;
+
+  -- Return success
+  RETURN QUERY SELECT 'verified'::TEXT, 'Email verified successfully!'::TEXT, token_record.user_id;
+END;
+$$;
+
 -- Show confirmation
-SELECT 'Database permissions have been updated successfully!' as message;
+SELECT 'Database permissions and verify_email_token function have been created successfully!' as message;
