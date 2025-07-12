@@ -1,7 +1,7 @@
 // @ts-nocheck
 // supabase/functions/send-verification-email-v2/index.ts
-// This is the TEMPORARY debugging version.
-// Your goal is to deploy this, trigger it, and check the frontend console response.
+// STEP 2: Test environment variables access
+// Previous step (basic function) worked! Now testing env vars.
 
 // Define CORS headers (essential for frontend to even call it)
 const corsHeaders = {
@@ -17,22 +17,40 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Attempt to parse JSON body. This is a common early crash point.
+    // Parse JSON body (we know this works from step 1)
     const payload = await req.json();
-    console.log("Minimal Edge Function: Payload parsed successfully.", payload); // This console.log might not be visible, but it helps logic
 
-    // If we reach here, basic function execution and JSON parsing is working.
-    // Return a clear success response.
-    return new Response(JSON.stringify({ success: true, message: "Minimal function reached success!" }), {
+    // NEW: Test environment variable access - this might be the crash point
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY');
+    const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@yourdomain.com';
+
+    // Check if environment variables are accessible
+    const envStatus = {
+      SUPABASE_URL: SUPABASE_URL ? 'SET' : 'MISSING',
+      SUPABASE_SERVICE_ROLE_KEY: SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING',
+      SENDGRID_API_KEY: SENDGRID_API_KEY ? 'SET' : 'MISSING',
+      FROM_EMAIL: FROM_EMAIL
+    };
+
+    // Return environment variable status for debugging
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: "Environment variables accessed successfully!",
+      envStatus: envStatus,
+      payload: payload
+    }), {
       headers: corsHeaders,
       status: 200,
     });
 
   } catch (error: any) {
-    // If anything crashes before or during req.json()
-    console.error("Minimal Edge Function: Crash during basic execution or JSON parsing:", error.message || error);
-    // Return the error message in the response for debugging in frontend console
-    return new Response(JSON.stringify({ success: false, message: `Minimal Function Crashed: ${error.message || 'Unknown error'}` }), {
+    // If anything crashes during env var access
+    return new Response(JSON.stringify({ 
+      success: false, 
+      message: `Step 2 Crashed (Env Vars): ${error.message || 'Unknown error'}` 
+    }), {
       headers: corsHeaders,
       status: 500,
     });
