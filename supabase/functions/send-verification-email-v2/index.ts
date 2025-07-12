@@ -1,403 +1,117 @@
-import { Database as DB } from '../../../src/types/database'; // Assuming you have a separate database.ts or this is a consolidated file
+// @ts-nocheck
+// This code is for your Supabase Edge Function: send-verification-email-v2/index.ts
+// TypeScript checking is disabled for Deno Edge Function compatibility
 
-// --- Frontend-facing User and Listing Interfaces (CamelCase) ---
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  university: string;
-  year: string;
-  bio: string;
-  profilePicture?: string;
-  verified: boolean;
-  student_verified?: boolean;
-  student_email?: string;
-  verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected';
-  verification_method?: string;
-  verified_at?: Date;
-  createdAt: Date;
-  phone?: string;
-  preferences?: {
-    smokingAllowed: boolean;
-    petsAllowed: boolean;
-    studyFriendly: boolean;
-    socialLevel: 'quiet' | 'moderate' | 'social';
-    maxBudget?: number;
-    preferredRoomTypes?: string[];
-    preferredAmenities?: string[];
-  };
-  location?: {
-    address: string;
-    city: string;
-    state: string;
-    country: string;
-    coordinates?: {
-      lat: number;
-      lng: number;
-    };
-  };
-  matchingPreferences?: { // This is camelCase for the frontend User interface
-    maxDistance: number; // in miles
-    sameUniversity: boolean;
-    similarYear: boolean;
-    budgetRange: {
-      min: number;
-      max: number;
-    };
-  };
-}
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.42.0";
+// Define the main handler for the Edge Function
+Deno.serve(async (req) => {
+  try {
+    const { userId, email, verificationType, metadata, expiresInMinutes, baseUrl, verificationToken } = await req.json();
 
-export interface Listing {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  location: {
-    address: string;
-    city: string;
-    state: string;
-    country: string;
-    latitude: number;
-    longitude: number;
-    nearbyUniversities: { name: string; distance: number }[];
-  };
-  roomType: 'single' | 'shared' | 'studio' | 'apartment';
-  amenities: string[];
-  images: string[];
-  availableFrom: Date;
-  availableTo?: Date;
-  maxOccupants: number;
-  hostId: string;
-  host: User;
-  createdAt: Date;
-  updatedAt: Date;
-  status: 'active' | 'inactive' | 'rented';
-  preferences: {
-    gender?: 'male' | 'female' | 'any';
-    smokingAllowed: boolean;
-    petsAllowed: boolean;
-    studyFriendly: boolean;
-    ageRange?: {
-      min: number;
-      max: number;
-    };
-    yearPreference?: string[];
-  };
-  rules?: string[];
-  deposit?: number;
-  utilities?: {
-    included: boolean;
-    cost?: number;
-  };
-  matchScore?: number; // Calculated based on user preferences
-  relevanceScore?: number; // Based on location, university, etc.
-}
+    console.log("Edge Function: Request received.");
+    console.log("Edge Function: Input data:", { userId, email, verificationType, verificationToken: verificationToken ? '***masked***' : 'N/A' });
 
-export interface SearchFilters {
-  query?: string;
-  location?: string;
-  university?: string | { custom: string };
-  maxDistance?: number;
-  priceRange?: { min?: number; max?: number };
-  roomType?: string[];
-  amenities?: string[];
-  moveInDate?: string;
-  availableFrom?: Date;
-  sortBy?: 'relevance' | 'price' | 'date';
-}
+    // Initialize Supabase client within the Edge Function using service role key
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' // IMPORTANT: Use SERVICE_ROLE_KEY for database writes
+    );
 
-export interface Message {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  listingId: string;
-  content: string;
-  timestamp: Date;
-  read: boolean;
-  type: 'text' | 'image' | 'system';
-}
+    // Ensure all required environment variables are set
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY');
+    const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@yourdomain.com';
 
-export interface Conversation {
-  id: string;
-  participants: User[];
-  listing: Listing;
-  messages: Message[];
-  lastMessage: Message;
-  updatedAt: Date;
-  unreadCount: number;
-}
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SENDGRID_API_KEY) {
+      console.error("Edge Function: Missing required environment variables.");
+      return new Response(JSON.stringify({ success: false, message: "Server configuration error: Missing environment variables." }), {
+        headers: { "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
 
-export interface MatchingCriteria {
-  university: string;
-  location: {
-    city: string;
-    state: string;
-    coordinates?: {
-      lat: number;
-      lng: number;
-    };
-  };
-  maxDistance: number;
-  budgetRange: {
-    min: number;
-    max: number;
-  };
-  preferences: {
-    roomTypes: string[];
-    amenities: string[];
-    lifestyle: {
-      smokingAllowed: boolean;
-      petsAllowed: boolean;
-      studyFriendly: boolean;
-      socialLevel: 'quiet' | 'moderate' | 'social';
-    };
-  };
-}
+    // --- Token Hashing for Security ---
+    // Hash the token BEFORE storing it. This is a critical security measure.
+    // The verify_email_token SQL function will need to hash its input before comparison.
+    console.log("Edge Function: Hashing token...");
+    const tokenBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verificationToken));
+    const tokenHash = Array.from(new Uint8Array(tokenBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    console.log("Edge Function: Token hashed successfully.");
 
-export interface Notification {
-  id: string;
-  userId: string;
-  type: 'message' | 'listing_inquiry' | 'listing_update' | 'system' | 'new_match';
-  title: string;
-  message: string;
-  read: boolean;
-  createdAt: Date;
-  actionUrl?: string;
-  metadata?: any;
-}
+    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
 
-export interface UniversityData {
-  id: string;
-  name: string;
-  city: string;
-  state: string;
-  country: string;
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
-  studentCount: number;
-  popularAreas: string[];
-  averageRent: {
-    single: number;
-    shared: number;
-    studio: number;
-    apartment: number;
-  };
-}
+    // --- Database Insertion ---
+    console.log("Edge Function: Attempting to insert token into email_verification_tokens...");
+    const { data: insertData, error: insertError } = await supabaseClient
+      .from('email_verification_tokens')
+      .insert({
+        user_id: userId,
+        email: email,
+        token_hash: tokenHash, // Store the HASHED token
+        expires_at: expiresAt,
+        status: 'pending'
+      })
+      .select() // Select the inserted row to confirm
+      .single();
 
-// --- Supabase Database Schema Types (Snake_Case for columns) ---
-// Note: If you have a separate `src/types/database.ts` file generated by Supabase,
-// it's usually better to import that. For now, I'm modifying the definition
-// as it was provided embedded here.
-export interface Database {
-  public: {
-    Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          name: string;
-          university: string;
-          year: string;
-          bio: string;
-          phone: string | null;
-          verified: boolean;
-          student_verified: boolean | null;
-          student_email: string | null;
-          verification_status: 'unverified' | 'pending' | 'verified' | 'rejected' | null;
-          verification_method: string | null;
-          verified_at: string | null;
-          profile_picture: string | null;
-          preferences: any; // jsonb
-          created_at: string;
-          updated_at: string;
-          email?: string | null;
-          location: any | null;
-          matching_preferences: any | null; // FIXED: Changed from matchingPreferences to matching_preferences
-        };
-        Insert: {
-          id: string;
-          name: string;
-          university: string;
-          year: string;
-          bio?: string;
-          phone?: string | null;
-          verified?: boolean;
-          student_verified?: boolean | null;
-          student_email?: string | null;
-          verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected' | null;
-          verification_method?: string | null;
-          verified_at?: string | null;
-          profile_picture?: string | null;
-          preferences?: any;
-          created_at?: string;
-          updated_at?: string;
-          email?: string | null;
-          location?: any | null;
-          matching_preferences?: any | null; // FIXED: Changed from matchingPreferences to matching_preferences
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          university?: string;
-          year?: string;
-          bio?: string;
-          phone?: string | null;
-          verified?: boolean;
-          student_verified?: boolean | null;
-          student_email?: string | null;
-          verification_status?: 'unverified' | 'pending' | 'verified' | 'rejected' | null;
-          verification_method?: string | null;
-          verified_at?: string | null;
-          profile_picture?: string | null;
-          preferences?: any;
-          created_at?: string;
-          updated_at?: string;
-          email?: string | null;
-          location?: any | null;
-          matching_preferences?: any | null; // FIXED: Changed from matchingPreferences to matching_preferences
-        };
-      };
-      listings: {
-        Row: {
-          id: string;
-          title: string;
-          description: string;
-          price: number;
-          location: any; // jsonb
-          room_type: 'single' | 'shared' | 'studio' | 'apartment';
-          amenities: string[];
-          images: string[];
-          available_from: string;
-          available_to: string | null;
-          max_occupants: number;
-          host_id: string;
-          status: 'active' | 'inactive' | 'rented';
-          preferences: any; // jsonb
-          rules: string[];
-          deposit: number | null;
-          utilities: any; // jsonb
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          title: string;
-          description: string;
-          price: number;
-          location: any;
-          room_type: 'single' | 'shared' | 'studio' | 'apartment';
-          amenities?: string[];
-          images?: string[];
-          available_from: string;
-          available_to?: string | null;
-          max_occupants?: number;
-          host_id: string;
-          status?: 'active' | 'inactive' | 'rented';
-          preferences?: any;
-          rules?: string[];
-          deposit?: number | null;
-          utilities?: any;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          title?: string;
-          description?: string;
-          price?: number;
-          location?: any;
-          room_type?: 'single' | 'shared' | 'studio' | 'apartment';
-          amenities?: string[];
-          images?: string[];
-          available_from?: string;
-          available_to?: string | null;
-          max_occupants?: number;
-          host_id?: string;
-          status?: 'active' | 'inactive' | 'rented';
-          preferences?: any;
-          rules?: string[];
-          deposit?: number | null;
-          utilities?: any;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      conversations: {
-        Row: {
-          id: string;
-          listing_id: string;
-          participant_1: string;
-          participant_2: string;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          listing_id: string;
-          participant_1: string;
-          participant_2: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          listing_id?: string;
-          participant_1?: string;
-          participant_2?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      messages: {
-        Row: {
-          id: string;
-          conversation_id: string;
-          sender_id: string;
-          content: string;
-          message_type: 'text' | 'image' | 'system';
-          read: boolean;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          conversation_id: string;
-          sender_id: string;
-          content: string;
-          message_type?: 'text' | 'image' | 'system';
-          read?: boolean;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          conversation_id?: string;
-          sender_id?: string;
-          content?: string;
-          message_type?: 'text' | 'image' | 'system';
-          read?: boolean;
-          created_at?: string;
-        };
-      };
-      favorites: {
-        Row: {
-          id: string;
-          user_id: string;
-          listing_id: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          listing_id: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          listing_id?: string;
-          created_at?: string;
-        };
-      };
-    };
-  };
-}
+    if (insertError) {
+      console.error("Edge Function: Error inserting token:", insertError.message, insertError.details);
+      return new Response(JSON.stringify({ success: false, message: `Failed to store verification token: ${insertError.message}` }), {
+        headers: { "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
+    console.log("Edge Function: Token inserted successfully. ID:", insertData?.id);
+
+    // --- Email Sending ---
+    const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`; // Send the original, raw token in the URL
+    console.log("Edge Function: Constructed verification URL:", verificationUrl);
+
+    console.log("Edge Function: Attempting to send email via SendGrid...");
+    const sendgridResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SENDGRID_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: email }] }],
+        from: { email: FROM_EMAIL, name: 'UniNest Verification' },
+        subject: 'Verify Your University Email - UniNest',
+        content: [{
+          type: 'text/html',
+          value: `
+            <p>Hello,</p>
+            <p>Please verify your email address by clicking on the link below:</p>
+            <a href="${verificationUrl}">Verify Email</a>
+            <p>This link will expire in ${expiresInMinutes} minutes.</p>
+            <p>If you did not request this, please ignore this email.</p>
+          `
+        }],
+      }),
+    });
+
+    if (!sendgridResponse.ok) {
+      const sendgridErrorText = await sendgridResponse.text();
+      console.error("Edge Function: SendGrid email failed to send:", sendgridResponse.status, sendgridErrorText);
+      return new Response(JSON.stringify({ success: false, message: `Failed to send email: ${sendgridResponse.statusText} - ${sendgridErrorText}` }), {
+        headers: { "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
+    console.log("Edge Function: Verification email sent successfully via SendGrid.");
+
+    return new Response(JSON.stringify({ success: true, message: 'Verification email sent successfully!' }), {
+      headers: { "Content-Type": "application/json" },
+      status: 200,
+    });
+
+  } catch (error: any) {
+    console.error("Edge Function: Unexpected error during execution:", error.message || error);
+    return new Response(JSON.stringify({ success: false, message: `An unexpected server error occurred: ${error.message || 'Unknown error'}` }), {
+      headers: { "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+});

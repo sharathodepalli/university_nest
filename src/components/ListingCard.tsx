@@ -34,7 +34,7 @@ const ListingCard: React.FC<ListingCardProps> = ({
     return null;
   }
 
-  const isFavorite = favoriteListings.includes(listing.id);
+  const isFavorite = favoriteListings?.includes(listing.id) ?? false;
 
   // Calculate match score only if user is logged in and showMatchScore is true
   const matchScore =

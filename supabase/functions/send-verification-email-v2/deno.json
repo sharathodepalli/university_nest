@@ -1,11 +1,31 @@
 {
   "compilerOptions": {
+    "lib": ["deno.ns", "deno.unstable"],
+    "strict": true,
     "allowJs": true,
-    "lib": ["deno.window"],
-    "strict": true
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "jsxFactory": "React.createElement",
+    "jsxFragmentFactory": "React.Fragment"
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 80,
+    "indentWidth": 2,
+    "singleQuote": true,
+    "proseWrap": "always"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
   },
   "imports": {
     "supabase": "https://esm.sh/@supabase/supabase-js@2.42.0",
-    "resend": "https://esm.sh/resend@1.1.0"
+    "supabase/client": "https://esm.sh/@supabase/supabase-js@2.42.0/dist/module/lib/SupabaseClient.js",
+    "supabase/auth-helpers": "https://esm.sh/@supabase/auth-helpers-react@0.5.0",
+    "resend": "https://esm.sh/resend@1.1.0",
+    "std/http": "https://deno.land/std@0.177.0/http/server.ts",
+    "std/uuid": "https://deno.land/std@0.224.0/uuid/mod.ts"
   }
 }
