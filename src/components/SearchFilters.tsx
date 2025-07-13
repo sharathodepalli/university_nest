@@ -11,6 +11,7 @@ import {
 import { useListings } from "../contexts/ListingsContext";
 import { SearchFilters as SearchFiltersType } from "../types";
 import { amenityOptions, roomTypeOptions } from "../data/mockData";
+import AddressAutocomplete from "./AddressAutocomplete";
 
 interface SearchFiltersProps {
   className?: string;
@@ -101,12 +102,14 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
             <MapPin className="w-4 h-4" />
             <span>Location</span>
           </label>
-          <input
-            type="text"
-            placeholder="City, address, or zip code"
+          <AddressAutocomplete
             value={localFilters.location || ""}
-            onChange={(e) => handleFilterChange("location", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onChange={(value) => handleFilterChange("location", value)}
+            placeholder="City, address, or zip code"
+            showCurrentLocation={true}
+            restrictToCountry="US"
+            types={["address", "locality", "sublocality"]}
+            className="w-full"
           />
         </div>
 

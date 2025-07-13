@@ -15,6 +15,7 @@ import { useListings } from "../contexts/ListingsContext";
 import { amenityOptions, roomTypeOptions } from "../data/mockData";
 import { getNearbyUniversities } from "../data/universities";
 import ImageUpload from "../components/ImageUpload";
+import AddressAutocomplete from "../components/AddressAutocomplete";
 // import GeocodingService from "../utils/geocoding"; // REMOVED STATIC IMPORT
 
 const CreateListingPage: React.FC = () => {
@@ -41,6 +42,12 @@ const CreateListingPage: React.FC = () => {
     petsAllowed: false,
     studyFriendly: true,
   });
+
+  const [addressCoordinates, setAddressCoordinates] = useState<{
+    latitude?: number;
+    longitude?: number;
+    placeId?: string;
+  }>({});
 
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
@@ -126,28 +133,44 @@ const CreateListingPage: React.FC = () => {
     setAddressError("");
 
     try {
-      // DYNAMIC IMPORT: Load GeocodingService only when needed for submission
-      const { default: GeocodingService } = await import("../utils/geocoding");
+      let latitude: number;
+      let longitude: number;
 
-      const fullAddress = `${formData.address}, ${formData.city}, ${formData.state}`;
-      const geocodeResult = await GeocodingService.geocodeAddress(fullAddress);
-
-      if (
-        !geocodeResult.success ||
-        !geocodeResult.latitude ||
-        !geocodeResult.longitude
-      ) {
-        setAddressError(
-          geocodeResult.error ||
-            "Could not verify the address. Please check and try again."
+      // Use coordinates from autocomplete if available, otherwise geocode
+      if (addressCoordinates.latitude && addressCoordinates.longitude) {
+        latitude = addressCoordinates.latitude;
+        longitude = addressCoordinates.longitude;
+      } else {
+        // DYNAMIC IMPORT: Load GeocodingService only when needed for submission
+        const { default: GeocodingService } = await import(
+          "../utils/geocoding"
         );
-        setIsSubmitting(false);
-        return;
+
+        const fullAddress = `${formData.address}, ${formData.city}, ${formData.state}`;
+        const geocodeResult = await GeocodingService.geocodeAddress(
+          fullAddress
+        );
+
+        if (
+          !geocodeResult.success ||
+          !geocodeResult.latitude ||
+          !geocodeResult.longitude
+        ) {
+          setAddressError(
+            geocodeResult.error ||
+              "Could not verify the address. Please check and try again."
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        latitude = geocodeResult.latitude;
+        longitude = geocodeResult.longitude;
       }
 
       const nearbyUniversities = getNearbyUniversities({
-        lat: geocodeResult.latitude,
-        lng: geocodeResult.longitude,
+        lat: latitude,
+        lng: longitude,
       });
 
       const newListing = {
@@ -159,9 +182,10 @@ const CreateListingPage: React.FC = () => {
           city: formData.city,
           state: formData.state,
           country: "USA",
-          latitude: geocodeResult.latitude,
-          longitude: geocodeResult.longitude,
+          latitude: latitude,
+          longitude: longitude,
           nearbyUniversities,
+          placeId: addressCoordinates.placeId, // Store Google Place ID for future reference
         },
         roomType: formData.roomType,
         amenities: selectedAmenities,
@@ -304,18 +328,40 @@ const CreateListingPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Address
                   </label>
-                  <input
-                    type="text"
-                    name="address"
-                    required
+                  <AddressAutocomplete
                     value={formData.address}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Street address"
+                    onChange={(address) => {
+                      setFormData((prev) => ({ ...prev, address }));
+                      setAddressError("");
+                    }}
+                    onAddressSelect={(addressDetails) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        address:
+                          addressDetails.streetAddress ||
+                          addressDetails.fullAddress,
+                        city: addressDetails.city || prev.city,
+                        state: addressDetails.state || prev.state,
+                      }));
+                      setAddressCoordinates({
+                        latitude: addressDetails.latitude,
+                        longitude: addressDetails.longitude,
+                        placeId: addressDetails.placeId,
+                      });
+                      setAddressError("");
+                    }}
+                    onCityChange={(city) => {
+                      setFormData((prev) => ({ ...prev, city }));
+                    }}
+                    onStateChange={(state) => {
+                      setFormData((prev) => ({ ...prev, state }));
+                    }}
+                    error={addressError}
+                    placeholder="Enter street address"
+                    showCurrentLocation={true}
+                    restrictToCountry="US"
+                    types={["address"]}
                   />
-                  {addressError && (
-                    <p className="text-red-600 text-sm mt-1">{addressError}</p>
-                  )}
                 </div>
 
                 <div>
