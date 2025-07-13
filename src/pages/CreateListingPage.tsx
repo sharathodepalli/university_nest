@@ -15,7 +15,7 @@ import { useListings } from "../contexts/ListingsContext";
 import { amenityOptions, roomTypeOptions } from "../data/mockData";
 import { getNearbyUniversities } from "../data/universities";
 import ImageUpload from "../components/ImageUpload";
-import AddressAutocomplete from "../components/AddressAutocomplete";
+import SmartAddressInput from "../components/SmartAddressInput";
 // import GeocodingService from "../utils/geocoding"; // REMOVED STATIC IMPORT
 
 const CreateListingPage: React.FC = () => {
@@ -328,13 +328,21 @@ const CreateListingPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Address
                   </label>
-                  <AddressAutocomplete
-                    value={formData.address}
-                    onChange={(address) => {
+                  <SmartAddressInput
+                    address={formData.address}
+                    city={formData.city}
+                    state={formData.state}
+                    onAddressChange={(address: string) => {
                       setFormData((prev) => ({ ...prev, address }));
                       setAddressError("");
                     }}
-                    onAddressSelect={(addressDetails) => {
+                    onCityChange={(city: string) => {
+                      setFormData((prev) => ({ ...prev, city }));
+                    }}
+                    onStateChange={(state: string) => {
+                      setFormData((prev) => ({ ...prev, state }));
+                    }}
+                    onAddressSelect={(addressDetails: any) => {
                       setFormData((prev) => ({
                         ...prev,
                         address:
@@ -350,17 +358,9 @@ const CreateListingPage: React.FC = () => {
                       });
                       setAddressError("");
                     }}
-                    onCityChange={(city) => {
-                      setFormData((prev) => ({ ...prev, city }));
-                    }}
-                    onStateChange={(state) => {
-                      setFormData((prev) => ({ ...prev, state }));
-                    }}
-                    error={addressError}
+                    addressError={addressError}
                     placeholder="Enter street address"
                     showCurrentLocation={true}
-                    restrictToCountry="US"
-                    types={["address"]}
                   />
                 </div>
 

@@ -11,7 +11,7 @@ import {
 import { useListings } from "../contexts/ListingsContext";
 import { SearchFilters as SearchFiltersType } from "../types";
 import { amenityOptions, roomTypeOptions } from "../data/mockData";
-import AddressAutocomplete from "./AddressAutocomplete";
+import SmartAddressInput from "./SmartAddressInput";
 
 interface SearchFiltersProps {
   className?: string;
@@ -102,13 +102,17 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
             <MapPin className="w-4 h-4" />
             <span>Location</span>
           </label>
-          <AddressAutocomplete
-            value={localFilters.location || ""}
-            onChange={(value) => handleFilterChange("location", value)}
+          <SmartAddressInput
+            address={localFilters.location || ""}
+            city=""
+            state=""
+            onAddressChange={(value: string) =>
+              handleFilterChange("location", value)
+            }
+            onCityChange={() => {}} // Not needed for search filter
+            onStateChange={() => {}} // Not needed for search filter
             placeholder="City, address, or zip code"
             showCurrentLocation={true}
-            restrictToCountry="US"
-            types={["address", "locality", "sublocality"]}
             className="w-full"
           />
         </div>

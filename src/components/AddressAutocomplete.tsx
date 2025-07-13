@@ -86,6 +86,25 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         'script[src*="maps.googleapis.com"]'
       );
       if (existingScript) {
+        // Script exists but Google might not be ready yet
+        const checkGoogleReady = () => {
+          if (
+            window.google &&
+            window.google.maps &&
+            window.google.maps.places
+          ) {
+            setIsGoogleLoaded(true);
+            autocompleteService.current =
+              new window.google.maps.places.AutocompleteService();
+            const dummyDiv = document.createElement("div");
+            placesService.current = new window.google.maps.places.PlacesService(
+              dummyDiv
+            );
+          } else {
+            setTimeout(checkGoogleReady, 100);
+          }
+        };
+        checkGoogleReady();
         return;
       }
 
@@ -99,6 +118,13 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGooglePlaces`;
       script.async = true;
       script.defer = true;
+
+      // Add error handling for script loading
+      script.onerror = () => {
+        console.warn(
+          "Failed to load Google Maps API - address autocomplete will use basic functionality"
+        );
+      };
 
       window.initGooglePlaces = () => {
         setIsGoogleLoaded(true);
@@ -274,41 +300,63 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         const { latitude, longitude } = position.coords;
 
         try {
-          // Reverse geocode the coordinates
-          const geocoder = new window.google.maps.Geocoder();
-          const latlng = { lat: latitude, lng: longitude };
+          // If Google Maps is available, use it for reverse geocoding
+          if (isGoogleLoaded && window.google) {
+            const geocoder = new window.google.maps.Geocoder();
+            const latlng = { lat: latitude, lng: longitude };
 
-          geocoder.geocode(
-            { location: latlng },
-            (results: any[], status: string) => {
-              setIsGettingLocation(false);
+            geocoder.geocode(
+              { location: latlng },
+              (results: any[], status: string) => {
+                setIsGettingLocation(false);
 
-              if (status === "OK" && results[0]) {
-                const place = results[0];
-                onChange(place.formatted_address);
+                if (status === "OK" && results[0]) {
+                  const place = results[0];
+                  onChange(place.formatted_address);
 
-                const addressDetails = parseGooglePlaceDetails(place);
-                addressDetails.latitude = latitude;
-                addressDetails.longitude = longitude;
+                  const addressDetails = parseGooglePlaceDetails(place);
+                  addressDetails.latitude = latitude;
+                  addressDetails.longitude = longitude;
 
-                if (onAddressSelect) {
-                  onAddressSelect(addressDetails);
+                  if (onAddressSelect) {
+                    onAddressSelect(addressDetails);
+                  }
+
+                  if (onCityChange && addressDetails.city) {
+                    onCityChange(addressDetails.city);
+                  }
+
+                  if (onStateChange && addressDetails.state) {
+                    onStateChange(addressDetails.state);
+                  }
+                } else {
+                  alert(
+                    "Could not get address from your location. Please enter manually."
+                  );
                 }
-
-                if (onCityChange && addressDetails.city) {
-                  onCityChange(addressDetails.city);
-                }
-
-                if (onStateChange && addressDetails.state) {
-                  onStateChange(addressDetails.state);
-                }
-              } else {
-                alert(
-                  "Could not get address from your location. Please enter manually."
-                );
               }
+            );
+          } else {
+            // Fallback: Use a basic reverse geocoding service or just coordinates
+            setIsGettingLocation(false);
+            const coordinateString = `${latitude.toFixed(
+              6
+            )}, ${longitude.toFixed(6)}`;
+            onChange(coordinateString);
+
+            if (onAddressSelect) {
+              onAddressSelect({
+                fullAddress: coordinateString,
+                streetAddress: coordinateString,
+                city: "",
+                state: "",
+                zipCode: "",
+                country: "",
+                latitude,
+                longitude,
+              });
             }
-          );
+          }
         } catch (error) {
           setIsGettingLocation(false);
           console.error("Error getting address from location:", error);
@@ -415,7 +463,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
           autoComplete="off"
         />
 
-        {showCurrentLocation && isGoogleLoaded && (
+        {showCurrentLocation && (
           <button
             type="button"
             onClick={getCurrentLocation}
@@ -477,11 +525,12 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         </div>
       )}
 
-      {/* No Google API warning */}
+      {/* Google API status */}
       {!isGoogleLoaded && (
         <p className="text-amber-600 text-sm mt-1 flex items-center gap-1">
           <Search className="h-4 w-4" />
-          Loading address suggestions...
+          Loading address suggestions... (Note: Full autocomplete requires
+          Google Maps API)
         </p>
       )}
     </div>
