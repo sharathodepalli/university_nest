@@ -263,7 +263,8 @@ const VerifyEmailPage: React.FC = () => {
         {(status === "error" || status === "expired") && (
           <div className="mt-8 p-4 bg-red-50 rounded-lg">
             <p className="text-sm text-red-700">
-              Having trouble? Contact our support team at support@uninest.com
+              Having trouble? Contact our support team at
+              contact@thetrueshades.com
             </p>
           </div>
         )}

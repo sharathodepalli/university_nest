@@ -199,19 +199,19 @@ const PrivacyPage: React.FC = () => {
                 <p>
                   <strong>Email:</strong>{" "}
                   <a
-                    href="mailto:privacy@uninest.com"
+                    href="mailto:contact@thetrueshades.com"
                     className="text-blue-600 hover:text-blue-500"
                   >
-                    privacy@uninest.com
+                    contact@thetrueshades.com
                   </a>
                 </p>
                 <p>
                   <strong>Data Protection Officer:</strong>{" "}
                   <a
-                    href="mailto:dpo@uninest.com"
+                    href="mailto:contact@thetrueshades.com"
                     className="text-blue-600 hover:text-blue-500"
                   >
-                    dpo@uninest.com
+                    contact@thetrueshades.com
                   </a>
                 </p>
               </div>

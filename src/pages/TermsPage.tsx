@@ -144,10 +144,10 @@ const TermsPage: React.FC = () => {
               If you have any questions about these Terms of Service, please
               contact us at
               <a
-                href="mailto:legal@uninest.com"
+                href="mailto:contact@thetrueshades.com"
                 className="text-blue-600 hover:text-blue-500 ml-1"
               >
-                legal@uninest.com
+                contact@thetrueshades.com
               </a>
             </p>
           </section>

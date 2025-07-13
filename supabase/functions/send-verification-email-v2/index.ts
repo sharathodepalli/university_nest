@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const SENDGRID_API_KEY = Deno.env.get('SENDGRID_API_KEY');
-    const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@universitynest.com';
+    const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'contact@thetrueshades.com';
     const APP_URL = Deno.env.get('APP_URL') || 'http://localhost:5173';
 
     // Create Supabase client with service role key

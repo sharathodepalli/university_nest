@@ -19,7 +19,7 @@ export interface VerificationEmailData {
 }
 
 export class SendGridService {
-  private static fromEmail = import.meta.env.VITE_FROM_EMAIL || 'noreply@uninest.com';
+  private static fromEmail = import.meta.env.VITE_FROM_EMAIL || 'contact@thetrueshades.com';
   private static fromName = 'UniNest Verification';
 
   /**
@@ -112,7 +112,7 @@ export class SendGridService {
               <li>💬 Connect with verified students at your university</li>
             </ul>
             
-            <p>Need help? Contact our support team at support@uninest.com</p>
+            <p>Need help? Contact our support team at contact@thetrueshades.com</p>
           </div>
           <div class="footer">
             <p>This email was sent to ${userEmail}</p>
@@ -134,7 +134,7 @@ This link will expire in 24 hours for security reasons.
 
 If you didn't request this verification, please ignore this email.
 
-Need help? Contact support@uninest.com
+Need help? Contact contact@thetrueshades.com
 
 © 2024 UniNest. All rights reserved.
     `;
@@ -188,7 +188,7 @@ Need help? Contact support@uninest.com
             </div>
             
             <p><strong>Review Timeline:</strong> 2-3 business days</p>
-            <p><strong>Contact:</strong> If you have questions, reach out to verification@uninest.com</p>
+            <p><strong>Contact:</strong> If you have questions, reach out to contact@thetrueshades.com</p>
             
             <p>Thank you for your patience!</p>
           </div>
@@ -214,7 +214,7 @@ What's Next:
 - If approved, you'll gain full access to UniNest
 - If additional information is needed, we'll contact you
 
-Questions? Contact verification@uninest.com
+Questions? Contact contact@thetrueshades.com
 
 © 2024 UniNest. All rights reserved.
     `;

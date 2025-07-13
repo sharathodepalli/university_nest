@@ -27,7 +27,7 @@ export interface GeocodeResult {
 // You might remove the original `AddressComponent` interface if it's no longer used elsewhere.
 
 class GeocodingService {
-  private static readonly Maps_API_KEY = import.meta.env.VITE_Maps_API_KEY;
+  private static readonly GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   /**
    * Geocode an address using Google Maps Geocoding API
@@ -42,7 +42,7 @@ class GeocodingService {
     }
 
     // Try Google Maps API first if API key is available
-    if (this.Maps_API_KEY) {
+    if (this.GOOGLE_MAPS_API_KEY) {
       try {
         return await this.geocodeWithGoogle(address);
       } catch (error) {
@@ -66,7 +66,7 @@ class GeocodingService {
    * Reverse geocode coordinates to get address
    */
   static async reverseGeocode(latitude: number, longitude: number): Promise<GeocodeResult> {
-    if (this.Maps_API_KEY) {
+    if (this.GOOGLE_MAPS_API_KEY) {
       try {
         return await this.reverseGeocodeWithGoogle(latitude, longitude);
       } catch (error) {
@@ -161,7 +161,7 @@ class GeocodingService {
    * Google Maps Geocoding API
    */
   private static async geocodeWithGoogle(address: string): Promise<GeocodeResult> {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${this.Maps_API_KEY}`;
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${this.GOOGLE_MAPS_API_KEY}`;
 
     const response = await fetch(url);
     const data = await response.json();
@@ -236,7 +236,7 @@ class GeocodingService {
    * Google reverse geocoding
    */
   private static async reverseGeocodeWithGoogle(latitude: number, longitude: number): Promise<GeocodeResult> {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${this.Maps_API_KEY}`;
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${this.GOOGLE_MAPS_API_KEY}`;
 
     const response = await fetch(url);
     const data = await response.json();
