@@ -154,7 +154,7 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
             profile_picture,
             preferences,
             location,
-            matching_preferences, /* REMOVED COMMENT HERE */
+            matching_preferences,
             created_at
           )
         `

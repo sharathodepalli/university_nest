@@ -510,7 +510,7 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
         );
         setIsLoading(false);
       }
-    }, 10000); // 10 second timeout
+    }, 5000); // Reduced to 5 seconds
 
     // Add visibility event listener
     document.addEventListener("visibilitychange", handleVisibilityChange);

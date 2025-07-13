@@ -64,10 +64,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
-        console.log(
-          "AuthContext Initial session:",
-          initialSession ? "SESSION" : "NO_SESSION"
-        );
         setSession(initialSession);
         setSupabaseUser(initialSession?.user ?? null);
 
@@ -81,7 +77,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const {
           data: { subscription },
         } = supabase.auth.onAuthStateChange(async (_, newSession) => {
-          setIsLoading(true);
+          console.log(
+            "Auth state changed - session:",
+            newSession ? "YES" : "NO"
+          );
           setSession(newSession);
           setSupabaseUser(newSession?.user ?? null);
 
@@ -105,9 +104,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Add loading timeout protection
     const loadingTimeout = setTimeout(() => {
       if (isLoading) {
+        console.warn("AuthContext loading timeout - forcing completion");
         setIsLoading(false);
       }
-    }, 10000); // 10 second timeout
+    }, 5000); // Reduced to 5 seconds
 
     // Initial check
     checkSupabase();
@@ -596,9 +596,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Clear any stuck loading states after 30 seconds
       setTimeout(() => {
         if (isLoading) {
+          console.warn("AuthContext focus timeout - forcing completion");
           setIsLoading(false);
         }
-      }, 30000);
+      }, 5000); // Reduced timeout
     },
   });
 
