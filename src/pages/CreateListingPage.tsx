@@ -15,7 +15,7 @@ import { useListings } from "../contexts/ListingsContext";
 import { amenityOptions, roomTypeOptions } from "../data/mockData";
 import { getNearbyUniversities } from "../data/universities";
 import ImageUpload from "../components/ImageUpload";
-import SmartAddressInput from "../components/SmartAddressInput";
+import LazyAddressInput from "../components/LazyAddressInput";
 // import GeocodingService from "../utils/geocoding"; // REMOVED STATIC IMPORT
 
 const CreateListingPage: React.FC = () => {
@@ -95,7 +95,7 @@ const CreateListingPage: React.FC = () => {
     setUploadError("");
   };
 
-  const onImageUploadComplete = (urls: string[]) => {
+  const onImageUploadComplete = (_urls: string[]) => {
     setImageUploadInProgress(false);
   };
 
@@ -328,7 +328,8 @@ const CreateListingPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Address
                   </label>
-                  <SmartAddressInput
+                  <LazyAddressInput
+                    mode="production"
                     address={formData.address}
                     city={formData.city}
                     state={formData.state}
@@ -361,6 +362,8 @@ const CreateListingPage: React.FC = () => {
                     addressError={addressError}
                     placeholder="Enter street address"
                     showCurrentLocation={true}
+                    required={true}
+                    autoUpgrade={true}
                   />
                 </div>
 

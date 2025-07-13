@@ -8,9 +8,11 @@ interface BasicAddressInputProps {
   onAddressChange: (address: string) => void;
   onCityChange: (city: string) => void;
   onStateChange: (state: string) => void;
+  onAddressSelect?: (addressDetails: any) => void; // Added for compatibility
   addressError?: string;
   className?: string;
   showCurrentLocation?: boolean;
+  required?: boolean; // Added for compatibility
 }
 
 const US_STATES = [

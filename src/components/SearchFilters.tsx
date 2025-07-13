@@ -11,7 +11,7 @@ import {
 import { useListings } from "../contexts/ListingsContext";
 import { SearchFilters as SearchFiltersType } from "../types";
 import { amenityOptions, roomTypeOptions } from "../data/mockData";
-import SmartAddressInput from "./SmartAddressInput";
+import LazyAddressInput from "./LazyAddressInput";
 
 interface SearchFiltersProps {
   className?: string;
@@ -102,7 +102,8 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
             <MapPin className="w-4 h-4" />
             <span>Location</span>
           </label>
-          <SmartAddressInput
+          <LazyAddressInput
+            mode="production"
             address={localFilters.location || ""}
             city=""
             state=""

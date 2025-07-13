@@ -45,6 +45,11 @@ export default defineConfig({
             handler: 'NetworkOnly', // Always go to network, never cache
           },
           {
+            // Don't cache Google Maps API calls
+            urlPattern: /^https:\/\/maps\.googleapis\.com\/.*$/,
+            handler: 'NetworkOnly',
+          },
+          {
             // Cache static assets but allow updates
             urlPattern: /^https:\/\/.*\.vercel\.app\/.*\.(js|css|png|jpg|jpeg|svg|webp)$/,
             handler: 'StaleWhileRevalidate', // Serve from cache, update in background
@@ -127,12 +132,19 @@ export default defineConfig({
   build: {
     outDir: 'dist', // Output directory for the build
     sourcemap: true, // Generate sourcemaps for production debugging
+    chunkSizeWarningLimit: 600, // Increase warning limit to 600KB
     // This ensures assets are chunked with content hashes for cache busting
     rollupOptions: {
       output: {
         entryFileNames: `assets/[name]-[hash].js`,
         chunkFileNames: `assets/[name]-[hash].js`,
         assetFileNames: `assets/[name]-[hash].[ext]`,
+        // Manual chunking for better code splitting
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['lucide-react'],
+          supabase: ['@supabase/supabase-js'],
+        },
       },
     },
   },
