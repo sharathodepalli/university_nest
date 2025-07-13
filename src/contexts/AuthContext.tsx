@@ -65,9 +65,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         console.log(
-          "[AuthContext] Initial session:",
-          initialSession ? "SESSION" : "NO_SESSION",
-          initialSession?.user?.id
+          "AuthContext Initial session:",
+          initialSession ? "SESSION" : "NO_SESSION"
         );
         setSession(initialSession);
         setSupabaseUser(initialSession?.user ?? null);
@@ -81,26 +80,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         const {
           data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+        } = supabase.auth.onAuthStateChange(async (_, newSession) => {
           setIsLoading(true);
-          console.log(
-            `[AuthContext] Auth state changed - event: ${event}, session: ${
-              newSession ? "YES" : "NO"
-            }, userId: ${newSession?.user?.id}`
-          );
           setSession(newSession);
           setSupabaseUser(newSession?.user ?? null);
 
           if (newSession?.user) {
             const skipAutoCreate = registeredUserIds.has(newSession.user.id);
-            console.log(
-              `[AuthContext] Fetching profile for auth change, skipAutoCreate: ${skipAutoCreate}`
-            );
             await fetchUserProfile(newSession.user.id, skipAutoCreate);
           } else {
-            console.log(
-              `[AuthContext] No user in session, setting user to null`
-            );
             setUser(null);
           }
           setIsLoading(false);
@@ -117,7 +105,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Add loading timeout protection
     const loadingTimeout = setTimeout(() => {
       if (isLoading) {
-        console.warn("[AuthContext] Loading timeout reached, forcing stop");
         setIsLoading(false);
       }
     }, 10000); // 10 second timeout
@@ -134,9 +121,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && supabaseUser?.id && user === null) {
-        console.log(
-          "[AuthContext] Tab became visible, user not loaded, refreshing"
-        );
         // Only refresh if user is not already loaded
         setTimeout(() => {
           fetchUserProfile(supabaseUser.id);
@@ -153,17 +137,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [supabaseUser?.id, user]); // Include user state to avoid unnecessary calls
 
   const fetchUserProfile = async (userId: string, skipAutoCreate = false) => {
-    // Less aggressive throttling - only 1 second
+    // Throttling - only 1 second
     const now = Date.now();
     if (now - lastFetchTime < 1000) {
-      console.log("[AuthContext] Throttling profile fetch, too recent");
       return;
     }
     setLastFetchTime(now);
-
-    console.log(
-      `[AuthContext] Starting fetchUserProfile for userId: ${userId}, skipAutoCreate: ${skipAutoCreate}`
-    );
 
     try {
       const { data, error, status } = await supabase
@@ -172,32 +151,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq("id", userId)
         .single();
 
-      console.log(
-        `[AuthContext] Profile fetch result - data: ${
-          data ? "FOUND" : "NULL"
-        }, error: ${error ? error.message : "NONE"}, status: ${status}`
-      );
-
       if (error && status === 406) {
         // Profile does not exist
         if (skipAutoCreate) {
-          console.log(
-            `[AuthContext] Profile not found for user ${userId}, skipping auto-creation.`
-          );
           setUser(null);
           return;
         }
 
         // Auto-create profile only if not during registration
-        console.warn(
-          `[AuthContext] Profile not found for user ${userId}. Creating one.`
-        );
-
         const { data: sessionData, error: sessionError } =
           await supabase.auth.getSession();
         if (sessionError || !sessionData.session) {
           console.error(
-            "[AuthContext] Could not get session for profile creation:",
+            "Could not get session for profile creation:",
             sessionError
           );
           setUser(null);
@@ -214,24 +180,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           university: "Not specified",
           year: "Not specified",
           bio: "",
-          // Explicitly set verification fields to false for new profiles
           verified: false,
           student_verified: false,
           verification_status: "unverified",
           student_email: null,
           verification_method: null,
           verified_at: null,
-          // Ensure matching_preferences is set for new profiles
-          matching_preferences: null, // Default to null for new profiles, matches DB schema
+          matching_preferences: null,
         });
 
         if (createError) {
           // Handle race condition: if profile already exists, fetch it instead
           if (createError.code === "23505") {
-            console.log(
-              `[AuthContext] Profile already exists for user ${userId}, fetching existing profile`
-            );
-            // Try to fetch the existing profile
             const { data: existingData, error: fetchError } = await supabase
               .from("profiles")
               .select("*")
@@ -239,10 +199,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               .single();
 
             if (fetchError) {
-              console.error(
-                `[AuthContext] Error fetching existing profile:`,
-                fetchError
-              );
+              console.error("Error fetching existing profile:", fetchError);
               throw fetchError;
             }
 
@@ -278,10 +235,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(transformedExistingUser);
             return;
           } else {
-            console.error(
-              `[AuthContext] Error creating profile for user ${userId}:`,
-              createError
-            );
+            console.error("Error creating profile:", createError);
             throw createError;
           }
         }
@@ -294,11 +248,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .single();
 
         if (newError) throw newError;
-        console.log(
-          `[AuthContext] Profile created and fetched successfully for user ${userId}`
-        );
 
-        // Transform the auto-created profile data too
+        // Transform the auto-created profile data
         const transformedNewUser: User = {
           id: newData.id,
           name: newData.name || "",
@@ -329,20 +280,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (error && status !== 406) {
-        console.error(
-          `[AuthContext] Profile fetch error (status: ${status}):`,
-          error
-        );
+        console.error("Profile fetch error:", error);
         throw error;
       }
 
       if (data) {
-        console.log(
-          `[AuthContext] Profile found and set for user ${userId}:`,
-          data.name
-        );
-        console.log("[AuthContext] Raw profile data from database:", data);
-
         // Transform snake_case database fields to camelCase for frontend
         const transformedUser: User = {
           id: data.id,
@@ -351,7 +293,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           university: data.university || "Not specified",
           year: data.year || "Not specified",
           bio: data.bio || "",
-          profilePicture: data.profile_picture || undefined, // snake_case to camelCase
+          profilePicture: data.profile_picture || undefined,
           verified: data.verified || false,
           student_verified: data.student_verified || false,
           student_email: data.student_email || undefined,
@@ -364,51 +306,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           phone: data.phone || undefined,
           preferences: data.preferences || undefined,
           location: data.location || undefined,
-          matchingPreferences: data.matching_preferences || undefined, // snake_case to camelCase
+          matchingPreferences: data.matching_preferences || undefined,
         };
 
-        console.log("[AuthContext] Transformed user data:", transformedUser);
         setUser(transformedUser);
       } else {
-        console.warn(
-          `[AuthContext] No profile data returned for user ${userId}`
-        );
         setUser(null);
       }
     } catch (error) {
-      console.error(
-        `[AuthContext] Error in fetchUserProfile for user ${userId}:`,
-        error
-      );
-      // Ensure user is logged out of UI if profile fetch fails critically
+      console.error("Error in fetchUserProfile:", error);
       setUser(null);
     }
   };
 
   const login = async (email: string, password: string) => {
-    console.log(`[AuthContext] Starting login for email: ${email}`);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      console.error(`[AuthContext] Login error:`, error);
+      console.error("Login error:", error);
       throw error;
     }
 
-    console.log(
-      `[AuthContext] Login successful for user: ${data.user?.id}, session: ${
-        data.session ? "YES" : "NO"
-      }`
-    );
-
     // The auth state change will trigger fetchUserProfile automatically
-    // But let's also try to fetch immediately to ensure we have the profile
     if (data.user?.id) {
-      console.log(
-        `[AuthContext] Attempting immediate profile fetch after login`
-      );
       await fetchUserProfile(data.user.id);
     }
   };
@@ -427,6 +350,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (authError) {
+        console.error("Registration auth error:", authError);
         throw authError;
       }
       if (!authData.user) {
@@ -438,21 +362,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Track that this user is being registered to prevent auto-creation
       setRegisteredUserIds((prev) => new Set(prev).add(userId));
 
-      // Step 2: Manually create the profile in the public.profiles table
+      // Step 2: Create the profile in the database
       const defaultName = email.split("@")[0] || "New User";
-
-      console.log("[Register] Profile data received:", profileData);
 
       // Prepare profile data, mapping camelCase to snake_case for DB
       const profileToInsert: any = {
-        // Using `any` for flexible property assignment
         id: userId,
         email: authData.user.email,
         name: profileData.name || defaultName,
         university: profileData.university || "Not specified",
         year: profileData.year || "Not specified",
         bio: profileData.bio || "",
-        // Explicitly set verification fields to false for new registrations
         verified: false,
         student_verified: false,
         verification_status: "unverified",
@@ -460,32 +380,85 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         verification_method: null,
         verified_at: null,
         phone: profileData.phone || null,
-        profile_picture: profileData.profilePicture || null, // Map profilePicture to profile_picture
+        profile_picture: profileData.profilePicture || null,
         location: profileData.location || null,
         preferences: profileData.preferences || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
-
-      console.log("[Register] Profile data to insert:", profileToInsert);
 
       // Map matchingPreferences (camelCase) to matching_preferences (snake_case)
       if (profileData.matchingPreferences !== undefined) {
         profileToInsert.matching_preferences = profileData.matchingPreferences;
       } else {
-        profileToInsert.matching_preferences = null; // Default to null if not provided
+        profileToInsert.matching_preferences = null;
       }
 
       const { error: profileError } = await supabase
         .from("profiles")
-        .insert(profileToInsert);
-
-      console.log("[Register] Database insert result - error:", profileError);
+        .insert(profileToInsert)
+        .select()
+        .single();
 
       if (profileError) {
-        // Handle race condition: if profile already exists, just continue
-        if (profileError.code === "23505") {
-          console.log(
-            `[Register] Profile already exists for user ${userId}, continuing with existing profile`
-          );
+        // Handle race condition: if profile already exists, handle email conflict
+        if (
+          profileError.code === "23505" ||
+          profileError.message?.includes("duplicate key")
+        ) {
+          // Try to find existing profile by email
+          const { data: existingProfile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("email", authData.user.email)
+            .single();
+
+          if (existingProfile && existingProfile.id !== userId) {
+            // Delete the old profile and create new one with correct ID AND new form data
+            await supabase
+              .from("profiles")
+              .delete()
+              .eq("id", existingProfile.id);
+
+            const updatedProfile = {
+              ...profileToInsert,
+              id: userId,
+            };
+
+            const { error: updateError } = await supabase
+              .from("profiles")
+              .insert(updatedProfile);
+
+            if (updateError) {
+              console.error("Failed to fix profile ID mismatch:", updateError);
+              throw updateError;
+            }
+          } else if (existingProfile && existingProfile.id === userId) {
+            // Update the existing profile with new form data
+            const { error: updateError } = await supabase
+              .from("profiles")
+              .update({
+                name: profileToInsert.name,
+                university: profileToInsert.university,
+                year: profileToInsert.year,
+                bio: profileToInsert.bio,
+                phone: profileToInsert.phone,
+                profile_picture: profileToInsert.profile_picture,
+                location: profileToInsert.location,
+                preferences: profileToInsert.preferences,
+                matching_preferences: profileToInsert.matching_preferences,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", userId);
+
+            if (updateError) {
+              console.error(
+                "Failed to update profile with new data:",
+                updateError
+              );
+              throw updateError;
+            }
+          }
         } else {
           console.error("Failed to create user profile:", profileError);
           throw profileError;
@@ -493,16 +466,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Step 3: Fetch the newly created profile to update the context
-      await fetchUserProfile(userId, true); // Skip auto-create since we just created it
+      await fetchUserProfile(userId, true);
 
-      // Clean up the tracking after successful registration (or failure)
+      // Clean up the tracking after successful registration
       setTimeout(() => {
         setRegisteredUserIds((prev) => {
           const newSet = new Set(prev);
           newSet.delete(userId);
           return newSet;
         });
-      }, 5000); // Clean up after 5 seconds
+      }, 5000);
     } catch (error) {
       console.error("Registration error:", error);
       throw error;
@@ -609,27 +582,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const clearCachesAndRefresh = async () => {
-    // In a real app, you might clear other client-side caches here
-    console.log("Clearing caches and refreshing user data...");
     await refreshUser();
   };
 
   // Handle tab visibility changes to refresh stale data
   useTabVisibility({
     onVisible: () => {
-      console.log("[AuthContext] Tab became visible, refreshing user data");
       if (supabaseUser && !isLoading) {
         refreshUser().catch(console.error);
       }
     },
     onFocus: () => {
-      console.log("[AuthContext] Window focused");
       // Clear any stuck loading states after 30 seconds
       setTimeout(() => {
         if (isLoading) {
-          console.warn(
-            "[AuthContext] Forcing loading state to false after timeout"
-          );
           setIsLoading(false);
         }
       }, 30000);
