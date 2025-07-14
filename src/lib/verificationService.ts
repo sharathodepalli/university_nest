@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Office365EmailService } from './office365EmailService';
+import { emailService } from './emailService';
 
 export interface VerificationRequest {
   id: string;
@@ -239,7 +239,7 @@ class VerificationService {
       const verificationUrl = `${baseUrl}/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
 
       // Send email using Office 365 SMTP
-      const emailResult = await Office365EmailService.sendVerificationEmail({
+      const emailResult = await emailService.sendVerificationEmail({
         userEmail: email,
         verificationToken: token,
         verificationUrl: verificationUrl

@@ -20,9 +20,20 @@ export class Office365EmailService {
   private static transporter: nodemailer.Transporter | null = null;
 
   /**
+   * Check if we're running in a server environment
+   */
+  private static isServerEnvironment(): boolean {
+    return typeof window === 'undefined' && typeof process !== 'undefined';
+  }
+
+  /**
    * Initialize the SMTP transporter with Office 365 settings
    */
   private static getTransporter(): nodemailer.Transporter {
+    if (!this.isServerEnvironment()) {
+      throw new Error('Office365EmailService can only be used in server-side environments');
+    }
+
     if (!this.transporter) {
       // Validate required environment variables
       const requiredEnvVars = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
@@ -62,6 +73,11 @@ export class Office365EmailService {
    * Send a generic email using Office 365 SMTP
    */
   static async sendEmail(options: EmailOptions): Promise<boolean> {
+    if (!this.isServerEnvironment()) {
+      console.error('❌ Office365EmailService attempted to run in browser environment');
+      return false;
+    }
+
     try {
       // In development mode without SMTP credentials, simulate email sending
       if (import.meta.env.DEV && !process.env.SMTP_USER) {
@@ -110,6 +126,11 @@ export class Office365EmailService {
    * Send verification email for university email verification
    */
   static async sendVerificationEmail(data: VerificationEmailData): Promise<boolean> {
+    if (!this.isServerEnvironment()) {
+      console.error('❌ Office365EmailService.sendVerificationEmail attempted to run in browser environment');
+      return false;
+    }
+
     const { userEmail, verificationUrl } = data;
 
     const html = `

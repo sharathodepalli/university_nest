@@ -73,6 +73,7 @@ export default defineConfig(() => {
       sourcemap: true,
       chunkSizeWarningLimit: 600,
       rollupOptions: {
+        external: ['nodemailer'], // Exclude nodemailer from bundle
         output: {
           entryFileNames: `assets/[name]-[hash].js`,
           chunkFileNames: `assets/[name]-[hash].js`,
@@ -85,13 +86,18 @@ export default defineConfig(() => {
         },
       },
     },
+    // Define Node.js polyfills for browser environment
+    define: {
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+      global: 'globalThis',
+    },
+    optimizeDeps: {
+      exclude: ['nodemailer'], // Don't try to optimize nodemailer for browser
+    },
     // Optionally, configure your server for development
     server: {
       open: true, // Opens browser automatically
       port: 3000,
-    },
-    define: {
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
     },
   };
 });
