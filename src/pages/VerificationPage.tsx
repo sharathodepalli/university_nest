@@ -35,7 +35,7 @@ interface VerificationRequest {
 }
 
 const VerificationPage: React.FC = () => {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [selectedMethod, setSelectedMethod] =
@@ -97,8 +97,6 @@ const VerificationPage: React.FC = () => {
   }, [user, navigate]);
 
   const handleEmailVerification = async () => {
-    console.log("Starting email verification for:", universityEmail);
-
     // Clear previous states
     setError("");
     setSuccess("");
@@ -138,8 +136,6 @@ const VerificationPage: React.FC = () => {
       setVerificationRequest(request);
       setVerificationStatus("pending");
       setSuccess(result.message);
-
-      console.log("Verification email process completed successfully");
     } catch (err: any) {
       console.error("Email verification error:", err);
       setError(
@@ -219,7 +215,6 @@ const VerificationPage: React.FC = () => {
       setSuccess(
         "Verification email resent successfully! Please check your inbox."
       );
-      console.log("✅ Verification email resent successfully:", result);
     } catch (err: any) {
       console.error("Error resending verification email:", err);
       setError(err.message || "Failed to resend email. Please try again.");
@@ -660,9 +655,6 @@ const VerificationPage: React.FC = () => {
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
-                      console.log("Send verification button clicked");
-                      console.log("Current email:", universityEmail);
-                      console.log("Is submitting:", isSubmitting);
                       handleEmailVerification();
                     }}
                     disabled={isSubmitting || !universityEmail.trim()}

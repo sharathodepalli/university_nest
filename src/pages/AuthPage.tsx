@@ -113,7 +113,6 @@ const AuthPage: React.FC = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (user && !isLoading) {
-      console.log("User already logged in, redirecting to home");
       navigate("/", { replace: true });
     }
   }, [user, isLoading, navigate]);
@@ -156,7 +155,6 @@ const AuthPage: React.FC = () => {
 
     try {
       if (isLogin) {
-        console.log("Attempting login with:", formData.email);
         await login(formData.email, formData.password);
         setSuccess("Login successful! Redirecting...");
 
@@ -164,15 +162,6 @@ const AuthPage: React.FC = () => {
           navigate("/", { replace: true });
         }, 500);
       } else {
-        console.log("Attempting registration with:", formData.email);
-        console.log("Full registration data:", {
-          name: formData.name,
-          email: formData.email,
-          university: dataToValidate.university,
-          year: formData.year,
-          bio: formData.bio,
-        });
-
         await register({
           name: formData.name,
           email: formData.email,

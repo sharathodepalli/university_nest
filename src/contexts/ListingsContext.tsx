@@ -196,9 +196,7 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
                 50 // 50 miles radius
               );
             } else {
-              console.warn(
-                `[ListingsContext] Listing ${item.id} has invalid or zero coordinates. Skipping nearby universities calculation.`
-              );
+              // Skip nearby universities calculation for invalid coordinates
             }
 
             return {
@@ -286,10 +284,6 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
         })
         .filter((listing): listing is Listing => listing !== null); // Filter out nulls
 
-      console.log(
-        "[ListingsContext] Fetched and formatted listings:",
-        fetchedListings.length
-      );
       setListings(fetchedListings);
     } catch (err: any) {
       const errorMessage =
@@ -304,14 +298,8 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
 
       // In production, don't fall back to mock data
       if (import.meta.env.DEV) {
-        console.log(
-          "[ListingsContext] Development mode: Falling back to mock data"
-        );
         setListings(updateListingsWithRealAddresses(mockListings));
       } else {
-        console.log(
-          "[ListingsContext] Production mode: No fallback to mock data"
-        );
         setListings([]); // Empty state in production
       }
     } finally {
@@ -372,11 +360,6 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
     // Added back
     try {
       let currentFilteredListings = [...listings];
-      console.log(
-        "[ListingsContext] Applying filters to",
-        currentFilteredListings.length,
-        "listings"
-      );
 
       // Apply search query filter
       if (filters.query) {

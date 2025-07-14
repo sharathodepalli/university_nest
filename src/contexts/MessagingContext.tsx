@@ -66,9 +66,6 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
     // Throttle rapid successive calls
     const now = Date.now();
     if (now - lastRefreshTime < 3000) {
-      console.log(
-        "[MessagingContext] Throttling conversation refresh, too recent"
-      );
       return;
     }
     setLastRefreshTime(now);

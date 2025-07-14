@@ -24,11 +24,12 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    // Office 365 SMTP Settings
-    const SMTP_HOST = Deno.env.get('SMTP_HOST') || 'smtp.office365.com';
+    // GoDaddy SMTP Settings (tested and working)
+    const SMTP_HOST = Deno.env.get('SMTP_HOST') || 'smtpout.secureserver.net';
     const SMTP_PORT = parseInt(Deno.env.get('SMTP_PORT') || '587');
     const SMTP_USER = Deno.env.get('SMTP_USER') || 'noreply@uninest.us';
     const SMTP_PASS = Deno.env.get('SMTP_PASS');
+    const SMTP_SECURE = Deno.env.get('SMTP_SECURE') === 'true';
     const FROM_EMAIL = SMTP_USER;
     const APP_URL = Deno.env.get('APP_URL') || 'https://www.uninest.us';
 
@@ -46,7 +47,7 @@ Deno.serve(async (req) => {
     if (!SMTP_PASS) {
       return new Response(JSON.stringify({ 
         success: false, 
-        message: 'Missing Office 365 SMTP password. Please configure SMTP_PASS environment variable.' 
+        message: 'Missing GoDaddy SMTP password. Please configure SMTP_PASS environment variable.' 
       }), {
         headers: corsHeaders,
         status: 500,
@@ -101,12 +102,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create SMTP client for Office 365
+    // Create SMTP client for GoDaddy
     const client = new SMTPClient({
       connection: {
         hostname: SMTP_HOST,
         port: SMTP_PORT,
-        tls: true,
+        tls: false, // Use STARTTLS instead of direct TLS
         auth: {
           username: SMTP_USER,
           password: SMTP_PASS,
