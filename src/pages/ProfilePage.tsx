@@ -179,22 +179,49 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/30">
       {/* Enhanced Container with better spacing */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
         {/* Enhanced Profile Header */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden mb-8 relative">
-          {/* Dynamic gradient background */}
-          <div className="h-40 lg:h-48 bg-gradient-to-r from-blue-600 via-purple-600 to-teal-500 relative overflow-hidden">
-            {/* Subtle pattern overlay */}
-            <div className="absolute inset-0 bg-black/10 bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.1),transparent_50%)]"></div>
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-8 relative backdrop-blur-sm">
+          {/* Dynamic gradient background with animated elements */}
+          <div className="h-48 lg:h-56 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 relative overflow-hidden">
+            {/* Animated background elements */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(255,255,255,0.1),transparent_50%)]"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,rgba(255,255,255,0.08),transparent_50%)]"></div>
+
+            {/* Floating geometric shapes */}
+            <div className="absolute top-8 right-8 w-16 h-16 bg-white/10 rounded-full blur-xl"></div>
+            <div className="absolute top-16 left-12 w-8 h-8 bg-white/15 rounded-lg rotate-45"></div>
+            <div className="absolute bottom-12 right-16 w-12 h-12 bg-white/10 rounded-full"></div>
+
+            {/* Verification badge in header */}
+            <div className="absolute top-6 right-6">
+              <div className="shadow-lg bg-white/90 backdrop-blur-sm rounded-full p-1">
+                <VerificationBadge
+                  isVerified={
+                    user?.student_verified ||
+                    user?.verification_status === "verified"
+                  }
+                  onClick={
+                    !(
+                      user?.student_verified ||
+                      user?.verification_status === "verified"
+                    )
+                      ? () => navigate("/verification")
+                      : undefined
+                  }
+                  size="lg"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="px-6 lg:px-8 pb-8">
-            <div className="flex flex-col lg:flex-row lg:items-end lg:space-x-8 -mt-20 lg:-mt-24">
+            <div className="flex flex-col lg:flex-row lg:items-end lg:space-x-8 -mt-24 lg:-mt-28">
               {/* Enhanced Profile Picture with better positioning */}
               <div className="relative flex-shrink-0 self-center lg:self-end">
-                <div className="ring-4 ring-white rounded-full">
+                <div className="ring-6 ring-white rounded-full shadow-2xl">
                   <ProfileImageUpload
                     currentImage={
                       isEditing ? formData.profilePicture : user?.profilePicture
@@ -205,85 +232,74 @@ const ProfilePage: React.FC = () => {
                     size="lg"
                   />
                 </div>
+                {/* Online status indicator */}
+                <div className="absolute bottom-2 right-2 w-6 h-6 bg-green-500 border-4 border-white rounded-full shadow-lg"></div>
               </div>
 
               {/* Enhanced Profile Info with better spacing */}
-              <div className="flex-1 mt-6 lg:mt-0 text-center lg:text-left">
+              <div className="flex-1 mt-8 lg:mt-0 text-center lg:text-left">
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between lg:space-x-6">
                   <div className="flex-1 min-w-0">
-                    {/* Name Section */}
-                    <div className="mb-3">
+                    {/* Name Section with enhanced styling */}
+                    <div className="mb-4">
                       {isEditing ? (
                         <input
                           type="text"
                           name="name"
                           value={formData.name}
                           onChange={handleInputChange}
-                          className="text-2xl lg:text-3xl font-bold text-gray-900 bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none text-center lg:text-left w-full transition-colors"
+                          className="text-3xl lg:text-4xl font-bold text-gray-900 bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none text-center lg:text-left w-full transition-colors placeholder-gray-400"
                           placeholder="Your name"
                         />
                       ) : (
-                        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 truncate">
+                        <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 truncate">
                           {user?.name || "Guest User"}
                         </h1>
                       )}
                     </div>
 
-                    {/* Enhanced Info Pills */}
-                    <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mb-4">
-                      <div className="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                    {/* Enhanced Info Pills with better design */}
+                    <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mb-6">
+                      <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 rounded-full text-sm font-medium shadow-sm border border-blue-200">
                         <GraduationCap className="w-4 h-4" />
                         <span className="truncate max-w-32 lg:max-w-none">
                           {user?.university || "N/A"}
                         </span>
                       </div>
-                      <div className="flex items-center space-x-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-sm font-medium">
+                      <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-50 to-green-100 text-green-700 rounded-full text-sm font-medium shadow-sm border border-green-200">
                         <Calendar className="w-4 h-4" />
                         <span>{user?.year || "N/A"}</span>
                       </div>
-                      <VerificationBadge
-                        isVerified={
-                          user?.student_verified ||
-                          user?.verification_status === "verified"
-                        }
-                        onClick={
-                          !(
-                            user?.student_verified ||
-                            user?.verification_status === "verified"
-                          )
-                            ? () => navigate("/verification")
-                            : undefined
-                        }
-                        size="sm"
-                      />
                     </div>
 
-                    {/* Bio Preview */}
+                    {/* Bio Preview with better styling */}
                     {!isEditing && user?.bio && (
-                      <p className="text-gray-600 text-sm lg:text-base line-clamp-2 lg:line-clamp-3">
-                        {user.bio}
-                      </p>
+                      <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                        <p className="text-gray-700 text-sm lg:text-base leading-relaxed line-clamp-3">
+                          {user.bio}
+                        </p>
+                      </div>
                     )}
                   </div>
 
-                  {/* Enhanced Action Buttons */}
+                  {/* Enhanced Action Buttons with better design */}
                   <div className="flex flex-col sm:flex-row items-center gap-3 mt-6 lg:mt-0 lg:flex-shrink-0">
                     {isEditing ? (
                       <>
                         <button
                           onClick={handleSave}
                           disabled={isSaving || locationLoading}
-                          className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                          className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-semibold transform hover:scale-105"
                         >
-                          <Save className="w-4 h-4" />
+                          <Save className="w-5 h-5" />
                           <span>{isSaving ? "Saving..." : "Save Changes"}</span>
                         </button>
                         <button
                           onClick={handleCancel}
                           disabled={isSaving || locationLoading}
-                          className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                          className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-2xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                         >
-                          <X className="w-4 h-4" />
+                          <X className="w-5 h-5" />
                           <span>Cancel</span>
                         </button>
                       </>
@@ -291,13 +307,13 @@ const ProfilePage: React.FC = () => {
                       <>
                         <button
                           onClick={() => setIsEditing(true)}
-                          className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl hover:from-gray-800 hover:to-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
+                          className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl hover:from-gray-800 hover:to-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl font-semibold transform hover:scale-105"
                         >
-                          <Edit3 className="w-4 h-4" />
+                          <Edit3 className="w-5 h-5" />
                           <span>Edit Profile</span>
                         </button>
                         <CacheClearButton
-                          className="px-4 py-2.5 text-sm bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all duration-200 border border-gray-200 font-medium"
+                          className="px-6 py-3 text-sm bg-gray-50 text-gray-600 rounded-2xl hover:bg-gray-100 transition-all duration-200 border border-gray-200 font-medium shadow-sm"
                           text="🔄 Refresh"
                         />
                       </>
@@ -305,9 +321,9 @@ const ProfilePage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Error Display */}
+                {/* Error Display with better styling */}
                 {profileUpdateError && (
-                  <div className="flex items-start space-x-3 text-red-600 text-sm bg-red-50 px-4 py-3 rounded-xl mt-4 border border-red-200">
+                  <div className="flex items-start space-x-3 text-red-600 text-sm bg-red-50 px-6 py-4 rounded-2xl mt-6 border border-red-200 shadow-sm">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                     <span className="flex-1">{profileUpdateError}</span>
                   </div>
@@ -322,25 +338,25 @@ const ProfilePage: React.FC = () => {
           {/* Enhanced Sidebar */}
           <div className="xl:col-span-1 space-y-6">
             {/* About Section with enhanced styling */}
-            <div className="bg-white rounded-2xl p-6 lg:p-8 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Edit3 className="w-4 h-4 text-blue-600" />
+            <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 group">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                  <Edit3 className="w-5 h-5 text-blue-600" />
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900">About</h2>
+                <h2 className="text-xl font-bold text-gray-900">About</h2>
               </div>
               {isEditing ? (
                 <textarea
                   name="bio"
                   value={formData.bio}
                   onChange={handleInputChange}
-                  rows={5}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-none"
+                  rows={6}
+                  className="w-full px-4 py-4 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-none text-gray-700 placeholder-gray-400"
                   placeholder="Tell others about yourself, your interests, and what makes you unique..."
                 />
               ) : (
                 <div className="space-y-3">
-                  <p className="text-gray-700 leading-relaxed">
+                  <p className="text-gray-700 leading-relaxed text-sm lg:text-base">
                     {user?.bio || (
                       <span className="text-gray-500 italic">
                         No bio added yet. Add one to help others get to know you
@@ -353,31 +369,33 @@ const ProfilePage: React.FC = () => {
             </div>
 
             {/* Enhanced Contact Info */}
-            <div className="bg-white rounded-2xl p-6 lg:p-8 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Mail className="w-4 h-4 text-green-600" />
+            <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 group">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-10 h-10 bg-gradient-to-r from-green-100 to-green-200 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                  <Mail className="w-5 h-5 text-green-600" />
                 </div>
-                <h2 className="text-lg font-semibold text-gray-900">Contact</h2>
+                <h2 className="text-xl font-bold text-gray-900">Contact</h2>
               </div>
               <div className="space-y-4">
                 {/* Email */}
                 {shouldShowEmail() ? (
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Mail className="w-4 h-4 text-blue-600" />
+                  <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl border border-gray-100">
+                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Mail className="w-5 h-5 text-blue-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">Email</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        Email
+                      </p>
                       <p className="text-sm text-gray-600 truncate">
                         {user?.email || "N/A"}
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-xl border border-yellow-200">
+                  <div className="flex items-center space-x-3 p-4 bg-yellow-50 rounded-2xl border border-yellow-200">
                     <Mail className="w-5 h-5 text-yellow-600 flex-shrink-0" />
-                    <span className="text-sm text-yellow-700">
+                    <span className="text-sm text-yellow-700 font-medium">
                       Email hidden by privacy settings
                     </span>
                   </div>
@@ -385,11 +403,11 @@ const ProfilePage: React.FC = () => {
 
                 {/* Phone */}
                 {isEditing ? (
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
+                  <div className="space-y-3">
+                    <label className="block text-sm font-semibold text-gray-700">
                       Phone Number
                     </label>
-                    <div className="flex items-center space-x-3 p-3 border-2 border-gray-200 rounded-xl focus-within:border-blue-500 transition-colors">
+                    <div className="flex items-center space-x-3 p-4 border-2 border-gray-200 rounded-2xl focus-within:border-blue-500 transition-colors">
                       <Phone className="w-5 h-5 text-gray-400 flex-shrink-0" />
                       <input
                         type="tel"
@@ -402,26 +420,28 @@ const ProfilePage: React.FC = () => {
                     </div>
                   </div>
                 ) : shouldShowPhone() && user?.phone ? (
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Phone className="w-4 h-4 text-green-600" />
+                  <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-gray-50 to-green-50 rounded-2xl border border-gray-100">
+                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Phone className="w-5 h-5 text-green-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">Phone</p>
-                      <p className="text-sm text-gray-600">{user.phone}</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        Phone
+                      </p>
+                      <p className="text-sm text-gray-600">{user?.phone}</p>
                     </div>
                   </div>
                 ) : !shouldShowPhone() && user?.phone ? (
-                  <div className="flex items-center space-x-3 p-3 bg-yellow-50 rounded-xl border border-yellow-200">
+                  <div className="flex items-center space-x-3 p-4 bg-yellow-50 rounded-2xl border border-yellow-200">
                     <Phone className="w-5 h-5 text-yellow-600 flex-shrink-0" />
-                    <span className="text-sm text-yellow-700">
+                    <span className="text-sm text-yellow-700 font-medium">
                       Phone hidden by privacy settings
                     </span>
                   </div>
                 ) : (
-                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+                  <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <Phone className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-gray-500 font-medium">
                       No phone number added
                     </span>
                   </div>
@@ -670,8 +690,8 @@ const ProfilePage: React.FC = () => {
                           <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
                             <p className="text-sm text-blue-700">
                               📍 Coordinates:{" "}
-                              {user.location.coordinates.lat.toFixed(4)},{" "}
-                              {user.location.coordinates.lng.toFixed(4)}
+                              {user?.location?.coordinates?.lat?.toFixed(4)},{" "}
+                              {user?.location?.coordinates?.lng?.toFixed(4)}
                             </p>
                           </div>
                         )}
