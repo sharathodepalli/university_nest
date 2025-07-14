@@ -81,6 +81,7 @@ export default defineConfig(() => {
             vendor: ['react', 'react-dom', 'react-router-dom'],
             ui: ['lucide-react'],
             supabase: ['@supabase/supabase-js'],
+            maps: ['../utils/geocoding']
           },
         },
       },
