@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { Office365EmailService } from './office365EmailService';
 
 export interface VerificationRequest {
   id: string;
@@ -223,57 +224,42 @@ class VerificationService {
   }
 
   /**
-   * Send verification email via Edge Function
+   * Send verification email using Office 365 SMTP
    * Changed to private as it's an internal helper for requestEmailVerification
    */
   private async sendVerificationEmail(
     email: string,
-    token: string, // This token will be the token_hash for the DB insertion
+    token: string,
     studentName: string | undefined,
-    userId: string // FIX: Pass userId to the Edge Function to allow it to create token
+    userId: string
   ): Promise<VerificationResult> {
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      // Create verification URL
+      const baseUrl = window.location.origin;
+      const verificationUrl = `${baseUrl}/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
 
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Supabase configuration missing');
-      }
-
-      // FIX: Ensure the correct Edge Function URL is used if you have a V2 version.
-      // Based on provided logs and typical deployment, this is the expected name.
-      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/send-verification-email-v2`; 
-
-      const response = await fetch(edgeFunctionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`, // Use anon key for client-side call to Edge Function
-        },
-        body: JSON.stringify({
-          email,
-          verificationToken: token, // Pass the generated token
-          studentName: studentName || 'Student',
-          userId: userId // FIX: Pass userId to the Edge Function
-        }),
+      // Send email using Office 365 SMTP
+      const emailResult = await Office365EmailService.sendVerificationEmail({
+        userEmail: email,
+        verificationToken: token,
+        verificationUrl: verificationUrl
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || `Server error: ${response.status}`);
+      if (emailResult) {
+        console.log('✅ Verification email sent successfully to:', email);
+        return {
+          success: true,
+          message: 'Verification email sent successfully'
+        };
+      } else {
+        throw new Error('Failed to send email via Office 365 SMTP');
       }
 
-      return {
-        success: true,
-        message: result.message || 'Verification email sent successfully'
-      };
-
     } catch (error: any) {
-      console.error('Email sending error:', error);
+      console.error('❌ Email sending error:', error);
       return {
         success: false,
-        message: 'Failed to send verification email'
+        message: `Failed to send verification email: ${error.message || 'Unknown error'}`
       };
     }
   }
