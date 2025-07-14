@@ -19,8 +19,8 @@ export interface VerificationEmailData {
 }
 
 export class SendGridService {
-  private static fromEmail = import.meta.env.VITE_FROM_EMAIL || 'contact@thetrueshades.com';
-  private static fromName = 'UniNest Verification';
+  private static fromEmail = import.meta.env.VITE_FROM_EMAIL || 'noreply@yourdomain.com';
+  private static fromName = 'UniNest Team';
 
   /**
    * Send a generic email using SendGrid
@@ -46,7 +46,29 @@ export class SendGridService {
         },
         subject: options.subject,
         html: options.html,
-        text: options.text || this.stripHtml(options.html)
+        text: options.text || this.stripHtml(options.html),
+        // Deliverability optimizations
+        mail_settings: {
+          spam_check: {
+            enable: true,
+            threshold: 1
+          }
+        },
+        tracking_settings: {
+          click_tracking: {
+            enable: true,
+            enable_text: false
+          },
+          open_tracking: {
+            enable: true
+          }
+        },
+        // Priority for fast delivery
+        headers: {
+          'X-Priority': '1',
+          'X-MSMail-Priority': 'High',
+          'Importance': 'high'
+        }
       };
 
       await sgMail.send(msg);
@@ -70,53 +92,74 @@ export class SendGridService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Verify Your University Email - UniNest</title>
+        <title>🎓 Verify Your UniNest Account</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8f9fa; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background: white; padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-          .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
-          .button:hover { background: #5a6fd8; }
-          .token-box { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 15px; margin: 20px 0; font-family: monospace; font-size: 16px; text-align: center; color: #495057; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-          .warning { background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 15px; margin: 20px 0; color: #856404; }
+          .email-wrapper { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
+          .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+          .header p { margin: 10px 0 0 0; font-size: 16px; opacity: 0.9; }
+          .content { padding: 40px 30px; }
+          .urgent-banner { background: linear-gradient(90deg, #ff6b6b, #feca57); color: white; padding: 15px; text-align: center; font-weight: bold; margin-bottom: 30px; border-radius: 8px; }
+          .cta-button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; margin: 25px 0; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3); transition: all 0.3s ease; }
+          .verification-code { background: #f8f9fa; border: 2px solid #667eea; border-radius: 8px; padding: 20px; margin: 25px 0; font-family: 'Courier New', monospace; font-size: 18px; text-align: center; color: #333; letter-spacing: 2px; }
+          .timer { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0; }
+          .benefits { background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 25px 0; }
+          .benefits ul { margin: 10px 0; padding-left: 20px; }
+          .benefits li { margin: 8px 0; color: #1976d2; }
+          .footer { text-align: center; padding: 20px; background: #f8f9fa; color: #666; font-size: 14px; }
+          .security-note { background: #ffebee; border: 1px solid #ffcdd2; border-radius: 8px; padding: 15px; margin: 20px 0; color: #c62828; }
+          @media (max-width: 600px) { .container { padding: 10px; } .content { padding: 25px 20px; } }
         </style>
       </head>
       <body>
         <div class="container">
-          <div class="header">
-            <h1>🏠 UniNest</h1>
-            <p>Verify Your University Email</p>
-          </div>
-          <div class="content">
-            <h2>Welcome to UniNest!</h2>
-            <p>Thank you for registering with UniNest. To complete your university verification and access our platform, please verify your university email address.</p>
-            
-            <div style="text-align: center;">
-              <a href="${verificationUrl}" class="button">Verify Email Address</a>
+          <div class="email-wrapper">
+            <div class="header">
+              <h1>🏠 UniNest</h1>
+              <p>Your University Housing Platform</p>
             </div>
-            
-            <p>If the button doesn't work, you can also copy and paste this link into your browser:</p>
-            <div class="token-box">${verificationUrl}</div>
-            
-            <div class="warning">
-              <strong>⚠️ Security Note:</strong> This verification link will expire in 24 hours for security reasons. If you didn't request this verification, please ignore this email.
+            <div class="content">
+              <div class="urgent-banner">
+                ⚡ ACTION REQUIRED: Verify your account now!
+              </div>
+              
+              <h2 style="color: #333; margin-top: 0;">Welcome to UniNest! 🎉</h2>
+              <p style="font-size: 16px; color: #555;">You're just one click away from accessing the best university housing platform. <strong>Verify your email to get started:</strong></p>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${verificationUrl}" class="cta-button">✅ Verify My Email Now</a>
+              </div>
+              
+              <div class="timer">
+                <strong>⏰ Time Sensitive:</strong> This verification link expires in <strong>15 minutes</strong> for your security.
+              </div>
+              
+              <div class="benefits">
+                <h3 style="margin-top: 0; color: #1976d2;">🚀 What you'll get access to:</h3>
+                <ul>
+                  <li><strong>🏠 Premium Listings</strong> - Find verified university housing</li>
+                  <li><strong>🎓 Student Network</strong> - Connect with verified classmates</li>
+                  <li><strong>💬 Direct Messaging</strong> - Chat safely with other students</li>
+                  <li><strong>🔒 Verified Community</strong> - University-only verified users</li>
+                </ul>
+              </div>
+              
+              <p><strong>Can't click the button?</strong> Copy and paste this link:</p>
+              <div class="verification-code">${verificationUrl}</div>
+              
+              <div class="security-note">
+                <strong>� Security Notice:</strong> If you didn't create this account, please ignore this email. Your security is our priority.
+              </div>
+              
+              <p style="margin-top: 30px;">Questions? Reply to this email or contact <strong>support@yourdomain.com</strong></p>
             </div>
-            
-            <h3>What happens next?</h3>
-            <ul>
-              <li>✅ Click the verification link above</li>
-              <li>🎓 Your university email will be verified</li>
-              <li>🏠 You'll gain access to browse and post listings</li>
-              <li>💬 Connect with verified students at your university</li>
-            </ul>
-            
-            <p>Need help? Contact our support team at contact@thetrueshades.com</p>
-          </div>
-          <div class="footer">
-            <p>This email was sent to ${userEmail}</p>
-            <p>© 2024 UniNest. All rights reserved.</p>
+            <div class="footer">
+              <p><strong>UniNest Team</strong> | Your trusted university housing platform</p>
+              <p>This email was sent to <strong>${userEmail}</strong></p>
+              <p>© 2024 UniNest. All rights reserved.</p>
+            </div>
           </div>
         </div>
       </body>
@@ -141,7 +184,7 @@ Need help? Contact contact@thetrueshades.com
 
     return this.sendEmail({
       to: userEmail,
-      subject: 'Verify Your University Email - UniNest',
+      subject: '🎓 [ACTION REQUIRED] Verify Your UniNest Account - 15 Minutes Left',
       html,
       text
     });

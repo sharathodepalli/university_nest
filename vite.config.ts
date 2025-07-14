@@ -83,15 +83,15 @@ export default defineConfig(() => {
             supabase: ['@supabase/supabase-js'],
           },
         },
+      },
     },
-  },
-  // Optionally, configure your server for development
-  server: {
-    open: true, // Opens browser automatically
-    port: 3000,
-  },
-  define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
-  },
+    // Optionally, configure your server for development
+    server: {
+      open: true, // Opens browser automatically
+      port: 3000,
+    },
+    define: {
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+    },
   };
 });
