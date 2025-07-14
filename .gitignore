@@ -168,6 +168,20 @@ local-test.*
 *.bak
 *.backup
 
+# Debug and development files
+*debug*.js
+*diagnose*.js
+*fix-*.js
+dev-dist/
+
+# Documentation (keep only README.md)
+*.md
+!README.md
+
+# SQL scripts (except migrations)
+*.sql
+!supabase/migrations/*.sql
+
 # OS Generated Files
 .DS_Store
 .DS_Store?
