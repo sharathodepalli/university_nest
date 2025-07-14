@@ -27,18 +27,15 @@ export function calculateDistance(
     typeof lat1 !== 'number' || typeof lon1 !== 'number' ||
     typeof lat2 !== 'number' || typeof lon2 !== 'number'
   ) {
-    console.warn('Invalid coordinates provided to calculateDistance');
     return 0;
   }
 
   // Check for valid coordinate ranges
   if (lat1 < -90 || lat1 > 90 || lat2 < -90 || lat2 > 90) {
-    console.warn('Invalid latitude values (must be between -90 and 90)');
     return 0;
   }
 
   if (lon1 < -180 || lon1 > 180 || lon2 < -180 || lon2 > 180) {
-    console.warn('Invalid longitude values (must be between -180 and 180)');
     return 0;
   }
 

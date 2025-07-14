@@ -11,7 +11,7 @@ import {
 import { useListings } from "../contexts/ListingsContext";
 import { SearchFilters as SearchFiltersType } from "../types";
 import { amenityOptions, roomTypeOptions } from "../data/mockData";
-import LazyAddressInput from "./LazyAddressInput";
+import FastAddressInput from "./FastAddressInput";
 
 interface SearchFiltersProps {
   className?: string;
@@ -102,16 +102,11 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
             <MapPin className="w-4 h-4" />
             <span>Location</span>
           </label>
-          <LazyAddressInput
-            mode="production"
-            address={localFilters.location || ""}
-            city=""
-            state=""
-            onAddressChange={(value: string) =>
+          <FastAddressInput
+            value={localFilters.location || ""}
+            onChange={(value: string) =>
               handleFilterChange("location", value)
             }
-            onCityChange={() => {}} // Not needed for search filter
-            onStateChange={() => {}} // Not needed for search filter
             placeholder="City, address, or zip code"
             showCurrentLocation={true}
             className="w-full"

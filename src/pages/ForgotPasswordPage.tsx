@@ -41,7 +41,6 @@ const ForgotPasswordPage: React.FC = () => {
         "If an account with this email exists, a password reset link has been sent."
       );
     } catch (err: any) {
-      console.error("Password reset error:", err);
       // Avoid disclosing whether the user exists
       setSuccess(
         "If an account with this email exists, a password reset link has been sent."

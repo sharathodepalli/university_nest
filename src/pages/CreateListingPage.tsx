@@ -8,15 +8,14 @@ import {
   Calendar,
   Plus,
   X,
-  AlertCircle, // Added for warning icon
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useListings } from "../contexts/ListingsContext";
 import { amenityOptions, roomTypeOptions } from "../data/mockData";
 import { getNearbyUniversities } from "../data/universities";
 import ImageUpload from "../components/ImageUpload";
-import LazyAddressInput from "../components/LazyAddressInput";
-// import GeocodingService from "../utils/geocoding"; // REMOVED STATIC IMPORT
+import FastAddressInput from "../components/FastAddressInput";
 
 const CreateListingPage: React.FC = () => {
   const { user, isSupabaseReady } = useAuth();
@@ -216,7 +215,6 @@ const CreateListingPage: React.FC = () => {
       await addListing(newListing);
       navigate("/browse");
     } catch (error) {
-      console.error("Error creating listing:", error);
       setUploadError("Failed to create listing. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -328,12 +326,9 @@ const CreateListingPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Address
                   </label>
-                  <LazyAddressInput
-                    mode="production"
-                    address={formData.address}
-                    city={formData.city}
-                    state={formData.state}
-                    onAddressChange={(address: string) => {
+                  <FastAddressInput
+                    value={formData.address}
+                    onChange={(address: string) => {
                       setFormData((prev) => ({ ...prev, address }));
                       setAddressError("");
                     }}
@@ -359,11 +354,10 @@ const CreateListingPage: React.FC = () => {
                       });
                       setAddressError("");
                     }}
-                    addressError={addressError}
+                    error={addressError}
                     placeholder="Enter street address"
                     showCurrentLocation={true}
                     required={true}
-                    autoUpgrade={true}
                   />
                 </div>
 

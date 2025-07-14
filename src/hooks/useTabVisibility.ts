@@ -31,7 +31,6 @@ export function useTabVisibility({
         ? Date.now() - lastHiddenTime.current 
         : 0;
 
-      console.log(`[TabVisibility] Tab visible after ${hiddenDuration}ms`);
       
       // Only refresh if tab was hidden for more than 5 seconds
       if (hiddenDuration > 5000) {
@@ -42,7 +41,6 @@ export function useTabVisibility({
 
         // Delay refresh to avoid rapid successive calls
         refreshTimeoutRef.current = setTimeout(() => {
-          console.log('[TabVisibility] Refreshing data after tab became visible');
           onVisible?.();
         }, refreshDelay);
       } else {
@@ -52,7 +50,6 @@ export function useTabVisibility({
   }, [onVisible, onHidden, refreshDelay]);
 
   const handleFocus = useCallback(() => {
-    console.log('[TabVisibility] Window focused');
     onFocus?.();
   }, [onFocus]);
 

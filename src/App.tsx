@@ -11,6 +11,7 @@ import { MessagingProvider } from "./contexts/MessagingContext";
 import { ProductionErrorBoundary } from "./components/ProductionErrorBoundary";
 import OfflineNotice from "./components/OfflineNotice";
 import Header from "./components/Header";
+
 import HomePage from "./pages/HomePage";
 import BrowsePage from "./pages/BrowsePage";
 import AuthPage from "./pages/AuthPage";
@@ -246,7 +247,6 @@ const AppContent: React.FC = () => {
                 </ProtectedRoute>
               }
             />
-            {/* Catch all route */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

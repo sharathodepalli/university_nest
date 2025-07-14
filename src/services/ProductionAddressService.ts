@@ -43,7 +43,6 @@ class ProductionAddressService {
       }
       return false;
     } catch (error) {
-      console.warn('Google Maps availability check failed:', error);
       return false;
     }
   }
@@ -57,7 +56,6 @@ class ProductionAddressService {
     }
 
     if (!this.GOOGLE_MAPS_API_KEY) {
-      console.warn('Google Maps API key not configured');
       return false;
     }
 
@@ -98,7 +96,6 @@ class ProductionAddressService {
 
         document.head.appendChild(script);
       } catch (error) {
-        console.error('Failed to load Google Maps:', error);
         resolve(false);
       }
     });
@@ -138,7 +135,6 @@ class ProductionAddressService {
           return address;
         }
       } catch (error) {
-        console.warn('Reverse geocoding failed, returning coordinates only:', error);
       }
 
       // Fallback: return coordinates only
@@ -188,7 +184,6 @@ class ProductionAddressService {
           return googleResult;
         }
       } catch (error) {
-        console.warn('Google reverse geocoding failed:', error);
         if (provider === 'google') {
           throw error;
         }
@@ -200,7 +195,6 @@ class ProductionAddressService {
       try {
         return await this.reverseGeocodeBrowser(latitude, longitude);
       } catch (error) {
-        console.warn('Browser reverse geocoding failed:', error);
         if (provider === 'browser') {
           throw error;
         }
@@ -284,7 +278,6 @@ class ProductionAddressService {
         };
       }
     } catch (error) {
-      console.warn('Nominatim reverse geocoding failed:', error);
     }
 
     return null;
@@ -304,7 +297,6 @@ class ProductionAddressService {
           return googleResult;
         }
       } catch (error) {
-        console.warn('Google geocoding failed:', error);
         if (provider === 'google') {
           throw error;
         }
@@ -316,7 +308,6 @@ class ProductionAddressService {
       try {
         return await this.geocodeAddressBrowser(address);
       } catch (error) {
-        console.warn('Browser geocoding failed:', error);
         if (provider === 'browser') {
           throw error;
         }
@@ -388,7 +379,6 @@ class ProductionAddressService {
         };
       }
     } catch (error) {
-      console.warn('Nominatim geocoding failed:', error);
     }
 
     return null;
@@ -459,7 +449,6 @@ class ProductionAddressService {
     try {
       results.googleMaps = await this.isGoogleMapsAvailable();
     } catch (error) {
-      console.warn('Google Maps health check failed:', error);
     }
 
     // Check Geolocation
@@ -473,7 +462,6 @@ class ProductionAddressService {
       });
       results.nominatim = response.ok;
     } catch (error) {
-      console.warn('Nominatim health check failed:', error);
     }
 
     return results;
