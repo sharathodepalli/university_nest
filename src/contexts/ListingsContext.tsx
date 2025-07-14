@@ -105,7 +105,6 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
     // Throttle rapid successive calls
     const now = Date.now();
     if (now - lastFetchTime < 5000 && lastFetchTime !== 0) {
-      console.log("[ListingsContext] Throttling listing fetch, too recent");
       return;
     }
     setLastFetchTime(now);
@@ -115,10 +114,6 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
 
     // Fallback to mock data if Supabase is not ready or offline
     if (!isSupabaseReady || !isOnline) {
-      console.log(
-        "[ListingsContext] Using mock data. Available listings:",
-        mockListings.length
-      );
       await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate loading
 
       // Ensure mock data also has real addresses integrated
@@ -596,7 +591,7 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
 
       try {
         if (!isSupabaseReady) {
-          console.log("[ListingsContext] Mock add listing for development.");
+          // Mock add listing for development
           const listing: Listing = {
             ...newListing,
             id: Date.now().toString(),
@@ -654,7 +649,7 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
     async (id: string, updates: Partial<Listing>) => {
       try {
         if (!isSupabaseReady) {
-          console.log("[ListingsContext] Mock update listing for development.");
+          // Mock update listing for development
           setListings((prev) =>
             prev.map((listing) =>
               listing.id === id
@@ -709,7 +704,7 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
     async (id: string) => {
       try {
         if (!isSupabaseReady) {
-          console.log("[ListingsContext] Mock delete listing for development.");
+          // Mock delete listing for development
           setListings((prev) => prev.filter((listing) => listing.id !== id));
           return;
         }
@@ -825,13 +820,13 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
   // Handle tab visibility changes to refresh listings
   useTabVisibility({
     onVisible: () => {
-      console.log("[ListingsContext] Tab became visible, refreshing listings");
+      // Tab became visible, refreshing listings
       if (!isLoading) {
         refreshListings().catch(console.error);
       }
     },
     onFocus: () => {
-      console.log("[ListingsContext] Window focused");
+      // Window focused
       // Clear any stuck loading states after 30 seconds
       setTimeout(() => {
         if (isLoading) {

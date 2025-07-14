@@ -28,13 +28,7 @@ export class SendGridService {
   static async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
       if (!import.meta.env.VITE_SENDGRID_API_KEY) {
-        console.warn('SendGrid API key not configured. Email simulation mode.');
-        console.log('📧 SIMULATED EMAIL:', {
-          to: options.to,
-          subject: options.subject,
-          html: options.html,
-          text: options.text
-        });
+        // Email simulation mode for development
         return true;
       }
 

@@ -58,12 +58,15 @@ class ProductionErrorBoundary extends Component<Props, State> {
       };
 
       // You can replace this with your actual error reporting service
-      console.error("Error Report:", errorReport);
+      // Log minimal info for production debugging
+      if (import.meta.env.DEV) {
+        console.error("Error Report:", errorReport);
+      }
 
       // Example for future Sentry integration:
       // Sentry.captureException(error, { extra: errorReport });
     } catch (reportingError) {
-      console.error("Failed to report error:", reportingError);
+      // Error reporting failed - handle silently in production
     }
   };
 

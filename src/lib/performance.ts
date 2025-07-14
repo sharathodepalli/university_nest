@@ -93,7 +93,7 @@ class PerformanceMonitor {
 
     // Log in development
     if (process.env.NODE_ENV === 'development') {
-      console.log(`Performance metric - ${name}: ${value}ms`);
+      // Performance metric recorded
     }
   }
 
@@ -138,7 +138,8 @@ class PerformanceMonitor {
     Object.keys(summary).forEach(key => {
       const values = summary[key].values;
       summary[key].avg = values.reduce((sum, val) => sum + val, 0) / values.length;
-      delete summary[key].values; // Remove values array from final summary
+      // Remove values array from final summary
+      (summary[key] as any).values = undefined;
     });
 
     return summary;

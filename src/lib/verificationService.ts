@@ -103,13 +103,9 @@ class VerificationService {
    */
   async verifyEmailToken(token: string): Promise<VerificationResult> {
     try {
-      console.log(`[VerificationService] Calling verify_email_token with token: ${token}`);
-      
       // Call database function to verify token
       const { data, error } = await supabase
         .rpc('verify_email_token', { token_input: token });
-
-      console.log(`[VerificationService] Database response:`, { data, error });
 
       if (error) {
         console.error('Token verification database error:', error);
@@ -128,9 +124,6 @@ class VerificationService {
       }
 
       const result = data[0];
-      console.log(`[VerificationService] Parsed result:`, result);
-      console.log(`[VerificationService] Result status:`, result?.status);
-      console.log(`[VerificationService] Result message:`, result?.message);
       
       if (!result) {
         return {
@@ -141,14 +134,13 @@ class VerificationService {
 
       // Check the actual status returned by the RPC function
       if (result.status !== 'verified') {
-        console.log(`[VerificationService] Status check failed. Expected: 'verified', Got: '${result.status}'`);
+        // Status check failed
         return {
           success: false,
           message: result.message || 'Invalid or expired verification token'
         };
       }
 
-      console.log(`[VerificationService] Verification successful!`);
       // Clear cached data
       // The RPC function (verify_email_token) does not return user_id directly in the success path,
       // it returns the verified email. We should rely on AuthContext to refresh the user profile
