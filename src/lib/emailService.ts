@@ -1,6 +1,8 @@
 // Client-safe email service interface
 // This file can be imported by client-side code without causing issues
 
+import { supabase } from './supabase';
+
 export interface EmailServiceInterface {
   sendVerificationEmail(data: VerificationEmailData): Promise<boolean>;
   sendEmail(options: EmailOptions): Promise<boolean>;
@@ -19,46 +21,42 @@ export interface VerificationEmailData {
   verificationUrl: string;
 }
 
-// Client-side safe email service
+// Client-side safe email service that calls Supabase Edge Functions
 export class ClientEmailService implements EmailServiceInterface {
   
   async sendVerificationEmail(data: VerificationEmailData): Promise<boolean> {
-    // In browser environment, simulate email sending
-    if (typeof window !== 'undefined') {
-      if (import.meta.env.DEV) {
-        console.log('📧 [CLIENT DEV] Simulating verification email send');
-        console.log('📧 [CLIENT DEV] To:', data.userEmail);
-        console.log('📧 [CLIENT DEV] Verification URL:', data.verificationUrl);
-        console.log('📧 [CLIENT DEV] In production, this would call a server API endpoint');
+    try {
+      // Call Supabase Edge Function for email sending
+      const { data: result, error } = await supabase.functions.invoke('send-verification-email-v2', {
+        body: {
+          userId: 'placeholder', // This will be set by the verification service
+          email: data.userEmail,
+          verificationToken: data.verificationToken
+        }
+      });
+
+      if (error) {
+        console.error('❌ Edge Function error:', error);
+        return false;
       }
-      
-      // In production, you would call a server API endpoint:
-      // return await fetch('/api/send-verification-email', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(data)
-      // }).then(r => r.ok);
-      
-      return true; // Simulate success for now
+
+      if (result?.success) {
+        console.log('✅ Verification email sent via Office 365 SMTP');
+        return true;
+      } else {
+        console.error('❌ Edge Function returned error:', result?.message);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Email service error:', error);
+      return false;
     }
-    
-    // Server-side: This shouldn't happen in our current architecture
-    // since we're building a client-side app for Vercel static hosting
-    console.error('❌ Server-side email service called in client-only build');
-    return false;
   }
 
-  async sendEmail(options: EmailOptions): Promise<boolean> {
-    if (typeof window !== 'undefined') {
-      if (import.meta.env.DEV) {
-        console.log('📧 [CLIENT DEV] Simulating email send');
-        console.log('📧 [CLIENT DEV] To:', options.to);
-        console.log('📧 [CLIENT DEV] Subject:', options.subject);
-      }
-      return true; // Simulate success
-    }
-    
-    console.error('❌ Server-side email service called in client-only build');
+  async sendEmail(_options: EmailOptions): Promise<boolean> {
+    // For now, this is a placeholder. You can extend the edge function
+    // to handle generic email sending if needed
+    console.log('📧 Generic email sending not implemented yet');
     return false;
   }
 }
