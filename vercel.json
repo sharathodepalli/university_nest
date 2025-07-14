@@ -5,6 +5,18 @@
       "destination": "/index.html"
     }
   ],
+  "staticFiles": {
+    "*.css": {
+      "headers": {
+        "Content-Type": "text/css"
+      }
+    },
+    "*.js": {
+      "headers": {
+        "Content-Type": "application/javascript"
+      }
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -31,11 +43,37 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com https://*.google.com https://*.gstatic.com; connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://*.google.com https://*.googleapis.com https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https: blob: https://*.google.com https://*.googleapis.com https://*.gstatic.com https://*.unsplash.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.google.com; font-src 'self' 'unsafe-inline' data: https://fonts.googleapis.com https://fonts.gstatic.com https://*.google.com https://*.gstatic.com; frame-src 'none';"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://maps.gstatic.com https://*.google.com https://*.gstatic.com; connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://*.google.com https://*.googleapis.com https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https: blob: https://*.google.com https://*.googleapis.com https://*.gstatic.com https://*.unsplash.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.google.com; font-src 'self' data: 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com https://*.google.com https://*.gstatic.com; frame-src 'none';"
         },
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=31536000; includeSubDomains"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*\\.css)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/css; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*\\.js)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
         }
       ]
     },
