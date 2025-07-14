@@ -18,7 +18,6 @@ import ListingCard from "../components/ListingCard";
 import ProfileImageUpload from "../components/ProfileImageUpload";
 import FastAddressInput from "../components/FastAddressInput";
 import { VerificationBadge } from "../components/VerificationBadge";
-import CacheClearButton from "../components/CacheClearButton";
 import { useNavigate } from "react-router-dom";
 
 const ProfilePage: React.FC = () => {
@@ -312,10 +311,6 @@ const ProfilePage: React.FC = () => {
                           <Edit3 className="w-5 h-5" />
                           <span>Edit Profile</span>
                         </button>
-                        <CacheClearButton
-                          className="px-6 py-3 text-sm bg-gray-50 text-gray-600 rounded-2xl hover:bg-gray-100 transition-all duration-200 border border-gray-200 font-medium shadow-sm"
-                          text="🔄 Refresh"
-                        />
                       </>
                     )}
                   </div>

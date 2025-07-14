@@ -10,7 +10,6 @@ import { ListingsProvider } from "./contexts/ListingsContext";
 import { MessagingProvider } from "./contexts/MessagingContext";
 import { ProductionErrorBoundary } from "./components/ProductionErrorBoundary";
 import OfflineNotice from "./components/OfflineNotice";
-import DevIndicator from "./components/DevIndicator";
 import Header from "./components/Header";
 
 import HomePage from "./pages/HomePage";
@@ -77,7 +76,6 @@ const AppContent: React.FC = () => {
     >
       <div className="min-h-screen bg-gray-50">
         <OfflineNotice />
-        <DevIndicator />
         <Header />
         <main>
           <Routes>
