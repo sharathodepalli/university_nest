@@ -112,14 +112,22 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
     setIsLoading(true);
     setError(null);
 
-    // Fallback to mock data if Supabase is not ready or offline
+    // In production, only use real data from Supabase
+    // In development, fall back to mock data if needed
     if (!isSupabaseReady || !isOnline) {
-      await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate loading
-
-      // Ensure mock data also has real addresses integrated
-      const listingsWithRealAddresses =
-        updateListingsWithRealAddresses(mockListings);
-      setListings(listingsWithRealAddresses);
+      if (import.meta.env.DEV) {
+        // Development: Use mock data as fallback
+        await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate loading
+        const listingsWithRealAddresses =
+          updateListingsWithRealAddresses(mockListings);
+        setListings(listingsWithRealAddresses);
+      } else {
+        // Production: Show empty state, don't use mock data
+        setListings([]);
+        setError(
+          "Unable to connect to the server. Please check your internet connection and try again."
+        );
+      }
       setIsLoading(false);
       return;
     }
@@ -290,10 +298,22 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
       errorHandler.logError(new Error(errorMessage));
 
       console.error(
-        "[ListingsContext] Error occurred, falling back to mock data. Error:",
+        "[ListingsContext] Error occurred while fetching listings. Error:",
         errorMessage
       );
-      setListings(updateListingsWithRealAddresses(mockListings)); // Ensure mock data fallback is also processed
+
+      // In production, don't fall back to mock data
+      if (import.meta.env.DEV) {
+        console.log(
+          "[ListingsContext] Development mode: Falling back to mock data"
+        );
+        setListings(updateListingsWithRealAddresses(mockListings));
+      } else {
+        console.log(
+          "[ListingsContext] Production mode: No fallback to mock data"
+        );
+        setListings([]); // Empty state in production
+      }
     } finally {
       setIsLoading(false);
     }

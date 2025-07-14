@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import ListingCard from "../components/ListingCard";
 import SkeletonCard from "../components/SkeletonCard";
+import EmptyState from "../components/EmptyState";
 import SearchFilters from "../components/SearchFilters"; // Import the SearchFilters component
 import { useAuth } from "../contexts/AuthContext";
 import { errorHandler } from "../lib/errorHandler";
@@ -550,26 +551,25 @@ const BrowsePage: React.FC = () => {
         )}
 
         {displayListings.length === 0 ? (
-          <div className="text-center py-20">
-            <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No listings found
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Try adjusting your filters or search criteria
-            </p>
-            {user && (
-              <div className="space-y-2">
-                <p className="text-sm text-gray-500">Suggestions:</p>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  <li>• Increase your maximum distance</li>
-                  <li>• Expand your budget range</li>
-                  <li>• Consider different room types</li>
-                  <li>• Remove some amenity requirements</li>
-                </ul>
-              </div>
-            )}
-          </div>
+          <EmptyState
+            title={
+              import.meta.env.PROD
+                ? "No listings available yet"
+                : "No listings found"
+            }
+            description={
+              import.meta.env.PROD
+                ? "Be the first to create a listing and help build our community! Start by posting your room or finding roommates."
+                : user
+                ? "Try adjusting your filters: increase distance, expand budget range, consider different room types, or remove amenity requirements."
+                : "Adjust your search criteria or sign up to see personalized recommendations."
+            }
+            action={{
+              label: "Post a Listing",
+              onClick: () => navigate("/create-listing"),
+            }}
+            icon={<MapPin className="w-12 h-12 text-gray-400" />}
+          />
         ) : (
           <>
             {showRecommended && user && recommendedListings.length > 0 && (
