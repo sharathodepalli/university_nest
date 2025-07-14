@@ -120,3 +120,57 @@ netlify deploy --prod --dir=dist
 - Set up error tracking (Sentry, etc.)
 - Regular security audits
 - Monitor authentication attempts
+
+## 🌐 Domain Deployment Guide
+
+### **Recommended: Vercel Deployment**
+
+#### Why Vercel is Best for UniNest:
+
+- ✅ Free tier with custom domain
+- ✅ Automatic GitHub integration
+- ✅ Built-in CDN and edge optimization
+- ✅ Environment variables management
+- ✅ Perfect for React/Vite projects
+- ✅ Automatic HTTPS
+
+#### Step-by-Step Vercel Deployment:
+
+1. **Push to GitHub**:
+
+```bash
+git add .
+git commit -m "Production ready"
+git push origin main
+```
+
+2. **Deploy on Vercel**:
+
+   - Visit [vercel.com](https://vercel.com)
+   - Sign up with GitHub
+   - Import your `university_nest` repository
+   - Configure:
+     - Framework: `Vite`
+     - Build Command: `npm run build`
+     - Output Directory: `dist`
+
+3. **Add Environment Variables in Vercel**:
+   Go to Project Settings → Environment Variables:
+
+```bash
+VITE_SUPABASE_URL=your_production_supabase_url
+VITE_SUPABASE_ANON_KEY=your_production_supabase_anon_key
+SENDGRID_API_KEY=your_sendgrid_api_key
+VITE_FROM_EMAIL=noreply@yourdomain.com
+VITE_GOOGLE_MAPS_API_KEY=your_google_maps_key
+VITE_APP_NAME=UniNest
+VITE_SUPPORT_EMAIL=support@yourdomain.com
+VITE_APP_URL=https://yourdomain.com
+VITE_ENVIRONMENT=production
+```
+
+4. **Connect GoDaddy Domain**:
+   - **In Vercel**: Settings → Domains → Add Domain
+   - **In GoDaddy DNS**: Add CNAME record:
+     - Type: `CNAME`
+     - Name: `www` (or `@` for root domain)
