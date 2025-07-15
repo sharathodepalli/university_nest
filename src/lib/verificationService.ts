@@ -91,7 +91,6 @@ class VerificationService {
       };
 
     } catch (error: any) {
-      console.error('Verification request error:', error);
       return {
         success: false,
         message: 'Failed to send verification email. Please try again.'
@@ -109,7 +108,6 @@ class VerificationService {
         .rpc('verify_email_token', { token_input: token });
 
       if (error) {
-        console.error('Token verification database error:', error);
         return {
           success: false,
           message: `Database error: ${error.message || 'Unknown error'}`
@@ -117,7 +115,6 @@ class VerificationService {
       }
 
       if (!data || !Array.isArray(data) || data.length === 0) {
-        console.error('Invalid verification response - no data returned');
         return {
           success: false,
           message: 'Invalid verification response from database'
@@ -160,7 +157,6 @@ class VerificationService {
       };
 
     } catch (error: any) {
-      console.error('Token verification unexpected error:', error);
       return {
         success: false,
         message: `Verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -192,7 +188,6 @@ class VerificationService {
         .single();
 
       if (error && error.code !== 'PGRST116') { // Not found (PGRST116) is ok, other errors are not
-        console.error('Error fetching verification status:', error);
         return {
           success: false,
           message: 'Failed to fetch verification status'
@@ -215,7 +210,6 @@ class VerificationService {
       };
 
     } catch (error: any) {
-      console.error('Error fetching verification status:', error);
       return {
         success: false,
         message: 'Failed to fetch verification status'
@@ -234,8 +228,6 @@ class VerificationService {
     userId: string
   ): Promise<VerificationResult> {
     try {
-      console.log('📧 Sending verification email via Edge Function...');
-      
       // Send email using Edge Function (Resend API)
       const emailResult = await emailService.sendVerificationEmail({
         userEmail: email,
@@ -245,13 +237,11 @@ class VerificationService {
       });
 
       if (emailResult) {
-        console.log('✅ Verification email sent successfully to:', email);
         return {
           success: true,
           message: 'Verification email sent successfully'
         };
       } else {
-        console.error('❌ Edge Function failed to send email');
         return {
           success: false,
           message: 'Failed to send verification email. Please check your internet connection and try again.'
@@ -259,7 +249,6 @@ class VerificationService {
       }
 
     } catch (error: any) {
-      console.error('❌ Email sending error:', error);
       return {
         success: false,
         message: `Failed to send verification email: ${error.message || 'Unknown error'}`
@@ -304,7 +293,7 @@ class VerificationService {
       };
       localStorage.setItem(`${this.CACHE_PREFIX}${userId}`, JSON.stringify(cacheData));
     } catch (error) {
-      console.warn('Failed to cache verification data:', error);
+      // Silently handle cache errors
     }
   }
 
@@ -323,7 +312,6 @@ class VerificationService {
 
       return data;
     } catch (error: any) {
-      console.warn('Failed to retrieve cached verification data:', error);
       return null;
     }
   }
@@ -350,10 +338,8 @@ class VerificationService {
           });
         });
       }
-      
-      console.log('🧹 All verification caches cleared');
     } catch (error: any) {
-      console.warn('Failed to clear all caches:', error);
+      // Silently handle cache errors
     }
   }
 
@@ -362,7 +348,6 @@ class VerificationService {
    */
   handleTabVisibilityChange(): void {
     if (!document.hidden) {
-      console.log('[VerificationService] Tab became visible, clearing stale caches');
       // Clear caches that might be stale
       Object.keys(localStorage).forEach(key => {
         if (key.includes(this.CACHE_PREFIX)) {
@@ -399,7 +384,6 @@ class VerificationService {
               // Clear cache if older than 10 minutes
               if (now - timestamp > 10 * 60 * 1000) {
                 localStorage.removeItem(key);
-                console.log(`🧹 Cleared stale cache: ${key}`);
               }
             }
           } catch (error) { // Catch potential parsing errors
@@ -408,7 +392,7 @@ class VerificationService {
         }
       });
     } catch (error: any) {
-      console.warn('Failed to clear stale caches:', error);
+      // Silently handle cache errors
     }
   }
 
@@ -419,7 +403,7 @@ class VerificationService {
     try {
       await supabase.rpc('cleanup_expired_verifications');
     } catch (error: any) {
-      console.warn('Failed to cleanup expired verifications:', error);
+      // Silently handle cleanup errors
     }
   }
 }

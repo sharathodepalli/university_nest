@@ -27,19 +27,6 @@ export class ClientEmailService implements EmailServiceInterface {
   
   async sendVerificationEmail(data: VerificationEmailData): Promise<boolean> {
     try {
-      console.log('🚀 Calling Edge Function send-verification-email-v3 with:', {
-        userId: data.userId,
-        email: data.userEmail,
-        hasToken: !!data.verificationToken
-      });
-
-      // Debug: Check Supabase configuration
-      const supabaseUrlFromEnv = import.meta.env.VITE_SUPABASE_URL;
-      console.log('🔍 Supabase client check:', {
-        supabaseUrl: supabaseUrlFromEnv,
-        functionsUrl: `${supabaseUrlFromEnv}/functions/v1/send-verification-email-v3`
-      });
-
       // Call Supabase Edge Function for email sending
       const { data: result, error } = await supabase.functions.invoke('send-verification-email-v3', {
         body: {
@@ -49,25 +36,7 @@ export class ClientEmailService implements EmailServiceInterface {
         }
       });
 
-      console.log('📧 Edge Function response:', { result, error });
-
       if (error) {
-        console.error('❌ Edge Function error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
-        
-        // Log specific error types for debugging
-        if (error.message?.includes('Failed to load resource')) {
-          console.error('🔍 Network error: Could not reach Edge Function');
-        } else if (error.code === '500') {
-          console.error('🔍 Server error: Edge Function returned 500 - likely missing RESEND_API_KEY');
-        } else if (error.code === '503') {
-          console.error('🔍 Service unavailable: Email service not configured');
-        }
-        
         return false;
       }
 
@@ -76,35 +45,17 @@ export class ClientEmailService implements EmailServiceInterface {
       if (typeof result === 'string') {
         try {
           parsedResult = JSON.parse(result);
-          console.log('📧 Parsed result:', parsedResult);
         } catch (parseError) {
-          console.error('❌ Failed to parse result as JSON:', result);
           return false;
         }
       }
 
       if (parsedResult?.success) {
-        console.log('✅ Verification email sent successfully');
-        console.log('📧 Email details:', {
-          message: parsedResult.message,
-          tokenId: parsedResult.tokenId,
-          note: parsedResult.note
-        });
         return true;
       } else {
-        console.error('❌ Edge Function returned error:', {
-          result: parsedResult,
-          message: parsedResult?.message,
-          error: parsedResult?.error
-        });
         return false;
       }
     } catch (error) {
-      console.error('❌ Email service error:', {
-        error: error,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
-      });
       return false;
     }
   }
@@ -112,7 +63,6 @@ export class ClientEmailService implements EmailServiceInterface {
   async sendEmail(_options: EmailOptions): Promise<boolean> {
     // For now, this is a placeholder. You can extend the edge function
     // to handle generic email sending if needed
-    console.log('📧 Generic email sending not implemented yet');
     return false;
   }
 }

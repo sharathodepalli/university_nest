@@ -1,5 +1,5 @@
 // @ts-nocheck
-// supabase/functions/send-v    console.log('📧 SMTP Configuration:');rification-email-v2/index.ts
+// supabase/functions/send-verification-email-v2/index.ts
 // OFFICE 365 SMTP VERSION: Using Office 365 instead of SendGrid
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.42.0';
@@ -17,20 +17,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('🚀 Function started');
-    
     const payload = await req.json();
-    console.log('📦 Payload received:', { userId: !!payload?.userId, email: !!payload?.email, token: !!payload?.verificationToken });
-    
     const { userId, email, verificationToken } = payload;
 
     // Environment variables
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    console.log('🔧 Environment Check:');
-    console.log('SUPABASE_URL available:', !!SUPABASE_URL);
-    console.log('SUPABASE_SERVICE_ROLE_KEY available:', !!SUPABASE_SERVICE_ROLE_KEY);
     
     // GoDaddy SMTP Settings (tested and working)
     const SMTP_HOST = Deno.env.get('SMTP_HOST') || 'smtpout.secureserver.net';
@@ -41,16 +33,8 @@ Deno.serve(async (req) => {
     const FROM_EMAIL = SMTP_USER;
     const APP_URL = Deno.env.get('APP_URL') || 'https://www.uninest.us';
 
-    console.log('� SMTP Configuration:');
-    console.log('SMTP_HOST:', SMTP_HOST);
-    console.log('SMTP_PORT:', SMTP_PORT);
-    console.log('SMTP_USER:', SMTP_USER);
-    console.log('SMTP_PASS available:', !!SMTP_PASS);
-    console.log('SMTP_SECURE:', SMTP_SECURE);
-
     // Validate required environment variables
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('❌ Missing Supabase configuration');
       return new Response(JSON.stringify({ 
         success: false, 
         message: 'Missing Supabase configuration',
@@ -65,7 +49,6 @@ Deno.serve(async (req) => {
     }
 
     if (!SMTP_PASS) {
-      console.error('❌ Missing SMTP password');
       return new Response(JSON.stringify({ 
         success: false, 
         message: 'Missing GoDaddy SMTP password. Please configure SMTP_PASS environment variable.',
@@ -79,8 +62,6 @@ Deno.serve(async (req) => {
         status: 500,
       });
     }
-    
-    console.log('✅ Environment variables validated');
     
     // Create Supabase client with service role key
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -131,18 +112,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log('✅ Database insert successful, attempting SMTP...');
-    
     // Create verification URL
     const verificationUrl = `${APP_URL}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
-    
-    // Create SMTP client for GoDaddy with detailed logging
-    console.log('🔧 Creating SMTP client with config:', {
-      hostname: SMTP_HOST,
-      port: SMTP_PORT,
-      tls: SMTP_SECURE,
-      username: SMTP_USER
-    });
     
     const client = new SMTPClient({
       connection: {
@@ -157,90 +128,6 @@ Deno.serve(async (req) => {
     });
 
     // Create simple email for testing
-    const htmlContent = `
-      <h1>🎓 Verify Your UniNest Account</h1>
-      <p>Click here to verify: <a href="${verificationUrl}">Verify Email</a></p>
-      <p>Or copy this link: ${verificationUrl}</p>
-    `;
-
-    // Send email using GoDaddy SMTP with detailed error catching
-    try {
-      console.log('📧 Attempting to send email to:', email);
-      
-      await client.send({
-        from: `UniNest Team <${FROM_EMAIL}>`,
-        to: email,
-        subject: '🎓 Verify Your UniNest Account - Action Required',
-        content: htmlContent,
-        html: htmlContent,
-      });
-
-      console.log('✅ Email sent successfully via GoDaddy SMTP to:', email);
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: "Verification email sent successfully via GoDaddy SMTP!",
-        details: {
-          tokenCreated: true,
-          emailSent: true,
-          emailProvider: "GoDaddy SMTP",
-          expiresAt: expiresAt,
-          tokenId: insertData?.id
-        }
-      }), {
-        headers: corsHeaders,
-        status: 200,
-      });
-      
-    } catch (emailError) {
-      console.error('❌ GoDaddy SMTP error details:', {
-        message: emailError.message,
-        name: emailError.name,
-        stack: emailError.stack?.substring(0, 200),
-        code: emailError.code,
-        errno: emailError.errno,
-        syscall: emailError.syscall
-      });
-      
-      return new Response(JSON.stringify({ 
-        success: false, 
-        message: `Email delivery failed: ${emailError.message}`,
-        note: "Database insert succeeded but email failed",
-        smtpError: {
-          type: emailError.name,
-          code: emailError.code,
-          details: emailError.message
-        }
-      }), {
-        headers: corsHeaders,
-        status: 500,
-      });
-    } finally {
-      // Close SMTP connection
-      try {
-        await client.close();
-        console.log('🔒 SMTP connection closed');
-      } catch (closeError) {
-        console.warn('⚠️ Error closing SMTP connection:', closeError.message);
-      }
-    }
-    // Create SMTP client for GoDaddy
-    const client = new SMTPClient({
-      connection: {
-        hostname: SMTP_HOST,
-        port: SMTP_PORT,
-        tls: false, // Use STARTTLS instead of direct TLS
-        auth: {
-          username: SMTP_USER,
-          password: SMTP_PASS,
-        },
-      },
-    });
-
-    // Create verification URL
-    const verificationUrl = `${APP_URL}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
-
-    // Create professional HTML email template
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -321,28 +208,7 @@ Deno.serve(async (req) => {
       </html>
     `;
 
-    const textContent = `
-Welcome to UniNest! 🎉
-
-You're just one click away from accessing the best university housing platform. 
-Verify your email to get started: ${verificationUrl}
-
-⏰ Time Sensitive: This verification link expires in 15 minutes for your security.
-
-🚀 What you'll get access to:
-• 🏠 Premium Listings - Find verified university housing
-• 🎓 Student Network - Connect with verified classmates  
-• 💬 Direct Messaging - Chat safely with other students
-• 🔒 Verified Community - University-only verified users
-
-Questions? Reply to this email or contact support@uninest.us
-
-🔒 Security Notice: If you didn't create this account, please ignore this email.
-
-© 2025 UniNest - University Housing Made Simple
-    `.trim();
-
-    // Send email using Office 365 SMTP
+    // Send email using GoDaddy SMTP with detailed error catching
     try {
       await client.send({
         from: `UniNest Team <${FROM_EMAIL}>`,
@@ -352,42 +218,44 @@ Questions? Reply to this email or contact support@uninest.us
         html: htmlContent,
       });
 
-      console.log('✅ Email sent successfully via Office 365 SMTP to:', email);
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: "Verification email sent successfully via GoDaddy SMTP!",
+        details: {
+          tokenCreated: true,
+          emailSent: true,
+          emailProvider: "GoDaddy SMTP",
+          expiresAt: expiresAt,
+          tokenId: insertData?.id
+        }
+      }), {
+        headers: corsHeaders,
+        status: 200,
+      });
+      
     } catch (emailError) {
-      console.error('❌ Office 365 SMTP error:', emailError);
       return new Response(JSON.stringify({ 
         success: false, 
         message: `Email delivery failed: ${emailError.message}`,
-        note: "Database insert succeeded but email failed"
+        note: "Database insert succeeded but email failed",
+        smtpError: {
+          type: emailError.name,
+          code: emailError.code,
+          details: emailError.message
+        }
       }), {
         headers: corsHeaders,
         status: 500,
       });
     } finally {
       // Close SMTP connection
-      await client.close();
-    }
-
-    return new Response(JSON.stringify({ 
-      success: true, 
-      message: "Verification email sent successfully via Office 365 SMTP!",
-      details: {
-        tokenCreated: true,
-        emailSent: true,
-        emailProvider: "Office 365 SMTP",
-        expiresAt: expiresAt,
-        tokenId: insertData?.id
+      try {
+        await client.close();
+      } catch (closeError) {
+        // Silently handle close error
       }
-    }), {
-      headers: corsHeaders,
-      status: 200,
-    });
+    }
   } catch (error: any) {
-    console.error('🚨 Function error:', error);
-    console.error('Error stack:', error.stack);
-    console.error('Error message:', error.message);
-    console.error('Error name:', error.name);
-    
     return new Response(JSON.stringify({ 
       success: false, 
       message: `Function Error: ${error.message || 'Unknown error'}`,
