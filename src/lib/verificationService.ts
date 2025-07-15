@@ -242,7 +242,8 @@ class VerificationService {
       const emailResult = await emailService.sendVerificationEmail({
         userEmail: email,
         verificationToken: token,
-        verificationUrl: verificationUrl
+        verificationUrl: verificationUrl,
+        userId: userId // Pass the userId to the email service
       });
 
       if (emailResult) {

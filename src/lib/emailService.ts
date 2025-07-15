@@ -19,6 +19,7 @@ export interface VerificationEmailData {
   userEmail: string;
   verificationToken: string;
   verificationUrl: string;
+  userId?: string; // Add userId parameter
 }
 
 // Client-side safe email service that calls Supabase Edge Functions
@@ -27,9 +28,9 @@ export class ClientEmailService implements EmailServiceInterface {
   async sendVerificationEmail(data: VerificationEmailData): Promise<boolean> {
     try {
       // Call Supabase Edge Function for email sending
-      const { data: result, error } = await supabase.functions.invoke('send-verification-email-v2', {
+      const { data: result, error } = await supabase.functions.invoke('send-verification-email-v3', {
         body: {
-          userId: 'placeholder', // This will be set by the verification service
+          userId: data.userId, // Use the actual userId passed from verification service
           email: data.userEmail,
           verificationToken: data.verificationToken
         }
