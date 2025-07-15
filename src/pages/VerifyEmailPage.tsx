@@ -22,14 +22,18 @@ const VerifyEmailPage: React.FC = () => {
   const token = searchParams.get("token");
 
   useEffect(() => {
+    console.log("[VerifyEmailPage] useEffect triggered, token:", token);
+
     // Only show the verification page - don't auto-verify
     if (!token) {
+      console.log("[VerifyEmailPage] No token provided");
       setStatus("error");
       setMessage("Invalid verification link. No token provided.");
       return;
     }
 
     // Set initial state to require user interaction
+    console.log("[VerifyEmailPage] Setting initial verifying state");
     setStatus("verifying");
     setMessage(
       "Ready to verify your email. Click the button below to complete verification."
@@ -37,7 +41,10 @@ const VerifyEmailPage: React.FC = () => {
   }, [token]);
 
   const handleManualVerification = async () => {
+    console.log("[VerifyEmailPage] Manual verification button clicked");
+
     if (!token) {
+      console.log("[VerifyEmailPage] No token available for verification");
       setStatus("error");
       setMessage("Invalid verification link. No token provided.");
       return;
@@ -50,6 +57,7 @@ const VerifyEmailPage: React.FC = () => {
       return;
     }
 
+    console.log("[VerifyEmailPage] Starting verification process");
     hasVerified.current = true;
     setStatus("loading");
     setMessage("Verifying your email, please wait...");
@@ -59,9 +67,17 @@ const VerifyEmailPage: React.FC = () => {
     );
 
     try {
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Verification timeout")), 10000)
+      );
+
       // The service calls the backend function which is SECURITY DEFINER,
       // so it doesn't require a session to run the update.
-      const result = await verificationService.verifyEmailToken(token);
+      const result = (await Promise.race([
+        verificationService.verifyEmailToken(token),
+        timeoutPromise,
+      ])) as any;
 
       console.log("[VerifyEmailPage] Verification result:", result);
 
