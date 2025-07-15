@@ -7,7 +7,7 @@ import { useAuth } from "../contexts/AuthContext";
 const VerifyEmailPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { session, refreshUser } = useAuth();
+  const { session, clearCachesAndRefresh } = useAuth();
 
   const [status, setStatus] = useState<
     "loading" | "success" | "error" | "expired" | "verifying"
@@ -68,12 +68,16 @@ const VerifyEmailPage: React.FC = () => {
         setStatus("success");
 
         // Check if a user session is active in the browser
-        if (session?.user && refreshUser) {
+        if (session?.user) {
+          setMessage(
+            "Email verification successful! Refreshing your profile..."
+          );
+          // Use comprehensive cache clearing to bypass any caching issues
+          await clearCachesAndRefresh();
           setMessage(
             "Email verification successful! Redirecting to your profile..."
           );
-          await refreshUser();
-          setTimeout(() => navigate("/profile"), 3000);
+          setTimeout(() => navigate("/profile"), 2000);
         } else {
           // If user is NOT logged in, show a message to log in.
           setMessage(
@@ -86,7 +90,8 @@ const VerifyEmailPage: React.FC = () => {
           // Check if the user is actually verified in their profile
           if (session?.user) {
             try {
-              await refreshUser();
+              // Use comprehensive cache clearing to get latest verification status
+              await clearCachesAndRefresh();
               // After refresh, check if verification worked
               setStatus("success");
               setMessage(

@@ -20,7 +20,7 @@ interface AuthContextType {
   updateProfile: (updates: Partial<User>) => Promise<void>;
   resetPasswordForEmail: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
-  refreshUser: () => Promise<void>;
+  refreshUser: (forceRefresh?: boolean) => Promise<void>;
   clearCachesAndRefresh: () => Promise<void>;
   isLoading: boolean;
   isSupabaseReady: boolean;
@@ -131,10 +131,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [supabaseUser?.id, user]); // Include user state to avoid unnecessary calls
 
-  const fetchUserProfile = async (userId: string, skipAutoCreate = false) => {
-    // Throttling - only 1 second
+  const fetchUserProfile = async (
+    userId: string,
+    skipAutoCreate = false,
+    forceRefresh = false
+  ) => {
+    // Throttling - only 1 second (skip if forceRefresh is true)
     const now = Date.now();
-    if (now - lastFetchTime < 1000) {
+    if (!forceRefresh && now - lastFetchTime < 1000) {
       return;
     }
     setLastFetchTime(now);
@@ -553,21 +557,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (error) throw error;
   };
 
-  const refreshUser = async () => {
+  const refreshUser = async (forceRefresh = false) => {
     if (supabaseUser) {
-      await fetchUserProfile(supabaseUser.id);
+      await fetchUserProfile(supabaseUser.id, false, forceRefresh);
     }
   };
 
   const clearCachesAndRefresh = async () => {
-    await refreshUser();
+    // Force refresh to bypass throttling and get fresh data
+    // Also refresh the Supabase session to ensure latest auth state
+    try {
+      await supabase.auth.refreshSession();
+    } catch (error) {
+      // Session refresh failed, but continue with profile refresh
+    }
+    await refreshUser(true);
   };
 
   // Handle tab visibility changes to refresh stale data
   useTabVisibility({
     onVisible: () => {
       if (supabaseUser && !isLoading) {
-        refreshUser();
+        // Use force refresh when tab becomes visible to get latest data
+        refreshUser(true);
       }
     },
     onFocus: () => {
