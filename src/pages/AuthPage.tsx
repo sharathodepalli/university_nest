@@ -177,7 +177,6 @@ const AuthPage: React.FC = () => {
         }, 500);
       }
     } catch (err: any) {
-      console.error("Authentication error:", err);
       // Display API/backend errors
       setError(err.message || "Authentication failed. Please try again.");
     } finally {
@@ -329,8 +328,8 @@ const AuthPage: React.FC = () => {
                       fieldValidation.name
                         ? "border-red-300 focus:ring-red-500"
                         : nameTouched && formData.name && !fieldValidation.name
-                        ? "border-green-300 focus:ring-green-500"
-                        : "border-gray-300 focus:ring-blue-500"
+                          ? "border-green-300 focus:ring-green-500"
+                          : "border-gray-300 focus:ring-blue-500"
                     }`}
                     placeholder="Enter your full name"
                     aria-required={!isLogin}
@@ -380,8 +379,8 @@ const AuthPage: React.FC = () => {
                     fieldValidation.email
                       ? "border-red-300 focus:ring-red-500"
                       : emailTouched && formData.email && !fieldValidation.email
-                      ? "border-green-300 focus:ring-green-500"
-                      : "border-gray-300 focus:ring-blue-500"
+                        ? "border-green-300 focus:ring-green-500"
+                        : "border-gray-300 focus:ring-blue-500"
                   }`}
                   placeholder={
                     isLogin
@@ -434,10 +433,10 @@ const AuthPage: React.FC = () => {
                     fieldValidation.password
                       ? "border-red-300 focus:ring-red-500"
                       : passwordTouched &&
-                        formData.password &&
-                        !fieldValidation.password
-                      ? "border-green-300 focus:ring-green-500"
-                      : "border-gray-300 focus:ring-blue-500"
+                          formData.password &&
+                          !fieldValidation.password
+                        ? "border-green-300 focus:ring-green-500"
+                        : "border-gray-300 focus:ring-blue-500"
                   }`}
                   placeholder="Enter your password"
                   aria-required="true"
@@ -445,8 +444,8 @@ const AuthPage: React.FC = () => {
                     fieldValidation.password
                       ? "password-error"
                       : !isLogin
-                      ? "password-strength"
-                      : undefined
+                        ? "password-strength"
+                        : undefined
                   }
                 />
                 <button
@@ -482,10 +481,10 @@ const AuthPage: React.FC = () => {
                         passwordStrength.score >= 4
                           ? "text-green-600"
                           : passwordStrength.score >= 3
-                          ? "text-blue-600"
-                          : passwordStrength.score >= 2
-                          ? "text-yellow-600"
-                          : "text-red-600"
+                            ? "text-blue-600"
+                            : passwordStrength.score >= 2
+                              ? "text-yellow-600"
+                              : "text-red-600"
                       }`}
                     >
                       {passwordStrength.label}

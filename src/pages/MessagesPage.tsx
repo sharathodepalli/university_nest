@@ -72,7 +72,6 @@ const MessagesPage: React.FC = () => {
         messageInputRef.current.focus();
       }
     } catch (error) {
-      console.error("Failed to send message:", error);
       // Restore message text on error
       setMessageText(messageToSend);
     } finally {
@@ -317,11 +316,11 @@ const MessagesPage: React.FC = () => {
                             {isToday(message.timestamp)
                               ? format(message.timestamp, "HH:mm")
                               : isYesterday(message.timestamp)
-                              ? `Yesterday ${format(
-                                  message.timestamp,
-                                  "HH:mm"
-                                )}`
-                              : format(message.timestamp, "MMM d, HH:mm")}
+                                ? `Yesterday ${format(
+                                    message.timestamp,
+                                    "HH:mm"
+                                  )}`
+                                : format(message.timestamp, "MMM d, HH:mm")}
                           </span>
                         </div>
                       )}

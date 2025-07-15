@@ -88,7 +88,6 @@ const VerificationPage: React.FC = () => {
           }
         }
       } catch (error) {
-        console.warn("Failed to load verification status:", error);
         // If we can't load from the database, start fresh
       }
     };
@@ -137,7 +136,6 @@ const VerificationPage: React.FC = () => {
       setVerificationStatus("pending");
       setSuccess(result.message);
     } catch (err: any) {
-      console.error("Email verification error:", err);
       setError(
         err.message || "Failed to send verification email. Please try again."
       );
@@ -216,7 +214,6 @@ const VerificationPage: React.FC = () => {
         "Verification email resent successfully! Please check your inbox."
       );
     } catch (err: any) {
-      console.error("Error resending verification email:", err);
       setError(err.message || "Failed to resend email. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -353,10 +350,10 @@ const VerificationPage: React.FC = () => {
                   verificationStatus === "verified"
                     ? "bg-green-100 text-green-800"
                     : verificationStatus === "pending"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : verificationStatus === "rejected"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-gray-100 text-gray-800"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : verificationStatus === "rejected"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-gray-100 text-gray-800"
                 }`}
               >
                 {verificationStatus === "verified" && "✓ Verified"}
@@ -627,10 +624,6 @@ const VerificationPage: React.FC = () => {
                         type="email"
                         value={universityEmail}
                         onChange={(e) => {
-                          console.log(
-                            "Email input changed to:",
-                            e.target.value
-                          );
                           setUniversityEmail(e.target.value);
                           // Clear previous errors when user starts typing
                           if (error) setError("");

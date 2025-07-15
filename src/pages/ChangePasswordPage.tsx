@@ -109,7 +109,6 @@ const ChangePasswordPage: React.FC = () => {
         });
       }, 3000);
     } catch (err: any) {
-      console.error("Password change error:", err);
       setError(err.message || "Failed to update password. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -238,8 +237,8 @@ const ChangePasswordPage: React.FC = () => {
                       newPassword && passwordStrength.score < 3
                         ? "border-red-300 focus:ring-red-500"
                         : newPassword && passwordStrength.score >= 3
-                        ? "border-green-300 focus:ring-green-500"
-                        : "border-gray-300 focus:ring-blue-500"
+                          ? "border-green-300 focus:ring-green-500"
+                          : "border-gray-300 focus:ring-blue-500"
                     }`}
                     placeholder="Enter your new password"
                     value={newPassword}
@@ -270,10 +269,10 @@ const ChangePasswordPage: React.FC = () => {
                           passwordStrength.score >= 4
                             ? "text-green-600"
                             : passwordStrength.score >= 3
-                            ? "text-blue-600"
-                            : passwordStrength.score >= 2
-                            ? "text-yellow-600"
-                            : "text-red-600"
+                              ? "text-blue-600"
+                              : passwordStrength.score >= 2
+                                ? "text-yellow-600"
+                                : "text-red-600"
                         }`}
                       >
                         {passwordStrength.label}
@@ -335,8 +334,8 @@ const ChangePasswordPage: React.FC = () => {
                       confirmPassword && !passwordsMatch
                         ? "border-red-300 focus:ring-red-500"
                         : confirmPassword && passwordsMatch
-                        ? "border-green-300 focus:ring-green-500"
-                        : "border-gray-300 focus:ring-blue-500"
+                          ? "border-green-300 focus:ring-green-500"
+                          : "border-gray-300 focus:ring-blue-500"
                     }`}
                     placeholder="Confirm your new password"
                     value={confirmPassword}

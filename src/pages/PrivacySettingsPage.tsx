@@ -38,7 +38,6 @@ const PrivacySettingsPage: React.FC = () => {
         setSuccess("");
       }, 3000);
     } catch (err: any) {
-      console.error("Privacy settings update error:", err);
       setError(
         err.message || "Failed to update privacy settings. Please try again."
       );
