@@ -19,7 +19,40 @@ Deno.serve(async (req) => {
     console.log('🚀 Email verification function started');
     
     const payload = await req.json();
+    console.log('📦 Received payload:', { 
+      userId: payload?.userId ? 'present' : 'missing',
+      email: payload?.email ? 'present' : 'missing', 
+      verificationToken: payload?.verificationToken ? 'present' : 'missing'
+    });
+    
     const { userId, email, verificationToken } = payload;
+
+    // Basic input validation
+    if (!userId || !email || !verificationToken) {
+      console.error('❌ Missing required fields:', { userId: !!userId, email: !!email, verificationToken: !!verificationToken });
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: 'Missing required fields: userId, email, and verificationToken are required',
+        error: 'VALIDATION_ERROR'
+      }), {
+        headers: corsHeaders,
+        status: 400,
+      });
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      console.error('❌ Invalid email format:', email);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: 'Invalid email format',
+        error: 'VALIDATION_ERROR'
+      }), {
+        headers: corsHeaders,
+        status: 400,
+      });
+    }
 
     // Environment variables
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
