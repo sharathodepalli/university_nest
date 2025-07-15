@@ -105,16 +105,10 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
    */
   const refreshListings = useCallback(async () => {
     // Renamed from fetchListings
-    console.log("[ListingsContext] refreshListings called");
-    console.log("[ListingsContext] isSupabaseReady:", isSupabaseReady);
-    console.log("[ListingsContext] isOnline:", isOnline);
-    console.log("[ListingsContext] NODE_ENV:", import.meta.env.NODE_ENV);
-    console.log("[ListingsContext] DEV:", import.meta.env.DEV);
 
     // Throttle rapid successive calls
     const now = Date.now();
     if (now - lastFetchTime < 5000 && lastFetchTime !== 0) {
-      console.log("[ListingsContext] Throttling fetch - too soon");
       return;
     }
     setLastFetchTime(now);
@@ -127,18 +121,10 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
     const shouldUseMockData = false; // Set to false to force real data
 
     if (shouldUseMockData && import.meta.env.DEV) {
-      console.log(
-        "[ListingsContext] Using fallback - Supabase not ready or offline"
-      );
       // Development: Use mock data as fallback
       await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate loading
       const listingsWithRealAddresses =
         updateListingsWithRealAddresses(mockListings);
-      console.log(
-        "[ListingsContext] Using mock data:",
-        listingsWithRealAddresses.length,
-        "listings"
-      );
       setListings(listingsWithRealAddresses);
       setIsLoading(false);
       return;
@@ -184,18 +170,10 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
       );
 
       if (dbError) {
-        console.error("[ListingsContext] Database error:", dbError);
         throw new Error(
           `Failed to fetch listings: ${dbError.message || "Unknown error"}`
         );
       }
-
-      console.log(
-        "[ListingsContext] Raw data fetched:",
-        data?.length || 0,
-        "items"
-      );
-      console.log("[ListingsContext] Sample raw item:", data?.[0]);
 
       const fetchedListings: Listing[] = (data || [])
         .map((item: any): Listing | null => {
@@ -304,25 +282,12 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
         })
         .filter((listing): listing is Listing => listing !== null); // Filter out nulls
 
-      console.log(
-        "[ListingsContext] Processed listings:",
-        fetchedListings.length
-      );
-      console.log(
-        "[ListingsContext] Sample processed listing:",
-        fetchedListings[0]
-      );
       setListings(fetchedListings);
     } catch (err: any) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to fetch listings";
       setError(errorMessage);
       errorHandler.logError(new Error(errorMessage));
-
-      console.error(
-        "[ListingsContext] Error occurred while fetching listings. Error:",
-        errorMessage
-      );
 
       // In production, don't fall back to mock data
       if (import.meta.env.DEV) {
@@ -559,10 +524,6 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
         }
       }
 
-      console.log(
-        "[ListingsContext] Filtered listings count:",
-        currentFilteredListings.length
-      );
       setFilteredListings(currentFilteredListings);
     } catch (error: any) {
       errorHandler.logError(
@@ -577,18 +538,11 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
    */
   const generateRecommendations = useCallback(() => {
     if (!user || listings.length === 0) {
-      console.log(
-        "[ListingsContext] No user or listings to generate recommendations."
-      );
       setRecommendedListings([]);
       return;
     }
 
     try {
-      console.log(
-        "[ListingsContext] Generating recommendations for user:",
-        user.university
-      );
       // Ensure relevance and match scores are calculated for each listing
       const listingsWithScores = listings.map((listing) => ({
         ...listing,
@@ -600,10 +554,6 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
         user,
         listingsWithScores,
         6 // Limit to 6 recommendations for display
-      );
-      console.log(
-        "[ListingsContext] Generated recommendations count:",
-        recommendations.length
       );
       setRecommendedListings(recommendations);
     } catch (error: any) {
@@ -795,10 +745,6 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
           oldStatus,
           status
         );
-
-        console.log(
-          `[ListingsContext] Listing ${id} status updated to ${status}`
-        );
       } catch (error: any) {
         const errorMessage = error.message || "Failed to update listing status";
         errorHandler.logError(
@@ -860,9 +806,6 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
     // Added back
     async (listingId: string) => {
       if (!user) {
-        console.warn(
-          "[ListingsContext] User not logged in. Cannot toggle favorite."
-        );
         return;
       }
 
@@ -870,9 +813,6 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
 
       try {
         if (!isSupabaseReady) {
-          console.log(
-            "[ListingsContext] Mock toggle favorite for development."
-          );
           const updated = isFavorite
             ? favoriteListings.filter((id) => id !== listingId)
             : [...favoriteListings, listingId];
@@ -949,7 +889,7 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
     onVisible: () => {
       // Tab became visible, refreshing listings
       if (!isLoading) {
-        refreshListings().catch(console.error);
+        refreshListings().catch(() => {});
       }
     },
     onFocus: () => {
@@ -957,9 +897,6 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
       // Clear any stuck loading states after 30 seconds
       setTimeout(() => {
         if (isLoading) {
-          console.warn(
-            "[ListingsContext] Forcing loading state to false after timeout"
-          );
           setIsLoading(false);
         }
       }, 30000);

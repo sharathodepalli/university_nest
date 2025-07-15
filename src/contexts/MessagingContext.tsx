@@ -104,7 +104,6 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
               }))
             );
           } catch (parseError) {
-            console.error("Failed to parse stored conversations:", parseError);
             setConversations([]);
           }
         } else {
@@ -115,7 +114,6 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
       }
 
       if (sessionError) {
-        console.error("Session error in refreshConversations:", sessionError);
         setConversations([]);
         setIsLoading(false);
         return;
