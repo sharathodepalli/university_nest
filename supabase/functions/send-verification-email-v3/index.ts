@@ -147,6 +147,15 @@ Deno.serve(async (req) => {
   const startTime = Date.now();
   let payload: any;
 
+  // Environment configuration (declare at function level for error handler access)
+  const config = {
+    SUPABASE_URL: Deno.env.get('SUPABASE_URL'),
+    SUPABASE_SERVICE_ROLE_KEY: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+    RESEND_API_KEY: Deno.env.get('RESEND_API_KEY'),
+    APP_URL: Deno.env.get('APP_URL') || 'https://www.uninest.us',
+    ENVIRONMENT: Deno.env.get('ENVIRONMENT') || 'production',
+  };
+
   try {
     console.log('🚀 Email verification function started');
     
@@ -193,15 +202,6 @@ Deno.serve(async (req) => {
         status: 429,
       });
     }
-
-    // Environment configuration with validation
-    const config = {
-      SUPABASE_URL: Deno.env.get('SUPABASE_URL'),
-      SUPABASE_SERVICE_ROLE_KEY: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-      RESEND_API_KEY: Deno.env.get('RESEND_API_KEY'),
-      APP_URL: Deno.env.get('APP_URL') || 'https://www.uninest.us',
-      ENVIRONMENT: Deno.env.get('ENVIRONMENT') || 'production',
-    };
     
     console.log('📋 Configuration loaded:', {
       environment: config.ENVIRONMENT,
@@ -410,7 +410,7 @@ Deno.serve(async (req) => {
       message: 'Internal server error',
       error: 'INTERNAL_ERROR',
       processingTime: `${processingTime}ms`,
-      ...(config?.ENVIRONMENT === 'development' && { details: error.message })
+      ...(config.ENVIRONMENT === 'development' && { details: error.message })
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
