@@ -263,7 +263,6 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
 
             return conversation;
           } catch (error) {
-            console.error(`Error processing conversation ${conv.id}:`, error);
             return null;
           }
         })
@@ -276,7 +275,6 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
 
       setConversations(validConversations);
     } catch (error) {
-      console.error("Error fetching conversations:", error);
       setConversations([]);
     } finally {
       setIsLoading(false); // Ensure loading is stopped after fetch completes or errors
@@ -300,8 +298,6 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
         type: messageData.message_type as "text" | "image" | "system",
       };
 
-      console.log("[MessagingContext] Processing new message:", newMessage);
-
       // Update conversations state with new message
       setConversations((prev) => {
         const existingConvIndex = prev.findIndex(
@@ -310,9 +306,6 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
 
         if (existingConvIndex === -1) {
           // If conversation doesn't exist, we'll need to refresh to get it
-          console.log(
-            "[MessagingContext] Conversation not found, triggering refresh..."
-          );
           // Use a timeout to avoid immediate state updates
           setTimeout(() => {
             refreshConversations();
@@ -383,9 +376,6 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
           );
         }
 
-        console.log(
-          "[MessagingContext] Conversations updated with new message"
-        );
         return updatedConversations;
       });
 
