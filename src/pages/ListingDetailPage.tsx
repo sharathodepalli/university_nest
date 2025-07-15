@@ -80,37 +80,63 @@ const ListingDetailPage: React.FC = () => {
   };
 
   const handleContactHost = async () => {
+    console.log("[ListingDetailPage] handleContactHost called");
+    console.log("[ListingDetailPage] user:", user?.id);
+    console.log("[ListingDetailPage] isOwner:", isOwner);
+
     if (!user) {
+      console.log("[ListingDetailPage] No user, redirecting to login");
       navigate("/login");
       return;
     }
 
-    if (isOwner) return;
+    if (isOwner) {
+      console.log("[ListingDetailPage] User is owner, returning");
+      return;
+    }
 
     // Check if host allows messages based on their privacy settings
-    const canMessage = canUserSendMessage(
+    const userVerificationStatus =
       user?.student_verified ||
-        user?.verification_status === "verified" ||
-        false,
+      user?.verification_status === "verified" ||
+      false;
+
+    console.log("[ListingDetailPage] User verification check:", {
+      studentVerified: user?.student_verified,
+      verificationStatus: user?.verification_status,
+      combinedStatus: userVerificationStatus,
+      hostId: listing.host.id,
+    });
+
+    const canMessage = canUserSendMessage(
+      userVerificationStatus,
       listing.host.id
     );
+
+    console.log("[ListingDetailPage] canMessage:", canMessage);
 
     if (!canMessage) {
       // Get host settings to show appropriate message
       const hostSettings = getUserPrivacySettings(listing.host.id);
-      alert(
+      const message =
         hostSettings.allowMessages === "verified"
           ? "This host only accepts messages from verified users."
-          : "This host has disabled direct messages."
-      );
+          : "This host has disabled direct messages.";
+      console.log("[ListingDetailPage] Cannot message host:", message);
+      alert(message);
       return;
     }
 
     try {
+      console.log("[ListingDetailPage] Creating conversation...");
       const conversation = await createConversation(listing, listing.host);
+      console.log("[ListingDetailPage] Conversation created:", conversation.id);
       navigate("/messages", { state: { activeConversation: conversation } });
     } catch (error) {
-      console.error("Error creating conversation:", error);
+      console.error("[ListingDetailPage] Error creating conversation:", error);
+      alert(
+        `Failed to start conversation: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
     }
   };
 
@@ -467,8 +493,8 @@ const ListingDetailPage: React.FC = () => {
                             {canMessage
                               ? "Message Host"
                               : hostSettings.allowMessages === "verified"
-                              ? "Host accepts verified users only"
-                              : "Messaging disabled"}
+                                ? "Host accepts verified users only"
+                                : "Messaging disabled"}
                           </span>
                         </button>
 

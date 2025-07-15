@@ -73,7 +73,13 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
     setIsLoading(true); // Set loading true at the start of the fetch
 
     try {
-      if (!isSupabaseReady) {
+      // Check session for authenticated operations
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (!isSupabaseReady || !session) {
         // Load conversations from localStorage for development
         const storedConversations = localStorage.getItem(
           `uninest_conversations_${user.id}`
@@ -104,6 +110,14 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
         } else {
           setConversations([]);
         }
+        setIsLoading(false);
+        return;
+      }
+
+      if (sessionError) {
+        console.error("Session error in refreshConversations:", sessionError);
+        setConversations([]);
+        setIsLoading(false);
         return;
       }
 
@@ -732,9 +746,36 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
 
   const createConversation = useCallback(
     async (listing: Listing, participant: User): Promise<Conversation> => {
-      if (!user) throw new Error("User must be logged in");
+      console.log("[MessagingContext] createConversation called");
+      console.log("[MessagingContext] user:", user?.id);
+      console.log("[MessagingContext] participant:", participant.id);
+      console.log("[MessagingContext] listing:", listing.id);
+      console.log("[MessagingContext] isSupabaseReady:", isSupabaseReady);
 
-      if (!isSupabaseReady) {
+      if (!user) {
+        console.error("[MessagingContext] No user logged in");
+        throw new Error("User must be logged in");
+      }
+
+      // Check if we have a valid session for authenticated operations
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+      console.log(
+        "[MessagingContext] Current session:",
+        session ? "Active" : "None"
+      );
+
+      if (sessionError) {
+        console.error("[MessagingContext] Session error:", sessionError);
+        throw new Error("Authentication error");
+      }
+
+      if (!isSupabaseReady || !session) {
+        console.log(
+          "[MessagingContext] Supabase not ready or no session, using mock"
+        );
         // Mock create conversation for development
         const existingConv = conversations.find(
           (conv) =>
@@ -780,6 +821,7 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
       }
 
       try {
+        console.log("[MessagingContext] Checking for existing conversation...");
         // Check if conversation already exists
         const { data: existingConv, error: checkError } = await supabase
           .from("conversations")
@@ -790,11 +832,24 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
           )
           .single();
 
+        console.log("[MessagingContext] Existing conversation check:", {
+          existingConv,
+          checkError,
+        });
+
         if (checkError && checkError.code !== "PGRST116") {
+          console.error(
+            "[MessagingContext] Error checking existing conversation:",
+            checkError
+          );
           throw checkError;
         }
 
         if (existingConv) {
+          console.log(
+            "[MessagingContext] Found existing conversation:",
+            existingConv.id
+          );
           // Return existing conversation
           const existingConversation = conversations.find(
             (c) => c.id === existingConv.id
@@ -804,6 +859,7 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
           }
         }
 
+        console.log("[MessagingContext] Creating new conversation...");
         // Create new conversation
         const { data: newConv, error: createError } = await supabase
           .from("conversations")
@@ -815,11 +871,23 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
           .select()
           .single();
 
-        if (createError) throw createError;
+        console.log("[MessagingContext] New conversation result:", {
+          newConv,
+          createError,
+        });
 
+        if (createError) {
+          console.error(
+            "[MessagingContext] Error creating conversation:",
+            createError
+          );
+          throw createError;
+        }
+
+        console.log("[MessagingContext] Sending initial message...");
         // Send initial message
         const initialMessage = `Hi! I'm interested in your listing: ${listing.title}`;
-        await supabase.from("messages").insert({
+        const { error: messageError } = await supabase.from("messages").insert({
           conversation_id: newConv.id,
           sender_id: user.id,
           content: initialMessage,
@@ -827,15 +895,32 @@ export const MessagingProvider: React.FC<MessagingProviderProps> = ({
           read: false,
         });
 
+        if (messageError) {
+          console.error(
+            "[MessagingContext] Error sending initial message:",
+            messageError
+          );
+          throw messageError;
+        }
+
+        console.log("[MessagingContext] Refreshing conversations...");
         await refreshConversations();
 
         const newConversation = conversations.find((c) => c.id === newConv.id);
         if (!newConversation) {
+          console.error(
+            "[MessagingContext] Failed to find newly created conversation"
+          );
           throw new Error("Failed to create conversation");
         }
 
+        console.log(
+          "[MessagingContext] Conversation created successfully:",
+          newConversation.id
+        );
         return newConversation;
       } catch (error: any) {
+        console.error("[MessagingContext] Error in createConversation:", error);
         throw new Error(error.message || "Failed to create conversation");
       }
     },

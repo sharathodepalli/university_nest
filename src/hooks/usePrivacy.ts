@@ -41,12 +41,21 @@ export const getUserPrivacySettings = (userId: string): PrivacySettings => {
 export const canUserSendMessage = (senderVerified: boolean = false, recipientUserId: string): boolean => {
   const recipientSettings = getUserPrivacySettings(recipientUserId);
   
+  console.log('[usePrivacy] canUserSendMessage check:', {
+    senderVerified,
+    recipientUserId,
+    recipientSettings: recipientSettings.allowMessages
+  });
+  
   switch (recipientSettings.allowMessages) {
     case 'everyone':
+      console.log('[usePrivacy] Host allows messages from everyone');
       return true;
     case 'verified':
+      console.log('[usePrivacy] Host only allows verified users, sender verified:', senderVerified);
       return senderVerified;
     case 'none':
+      console.log('[usePrivacy] Host has disabled messages');
       return false;
     default:
       return false;

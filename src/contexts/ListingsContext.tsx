@@ -102,9 +102,16 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
    */
   const refreshListings = useCallback(async () => {
     // Renamed from fetchListings
+    console.log("[ListingsContext] refreshListings called");
+    console.log("[ListingsContext] isSupabaseReady:", isSupabaseReady);
+    console.log("[ListingsContext] isOnline:", isOnline);
+    console.log("[ListingsContext] NODE_ENV:", import.meta.env.NODE_ENV);
+    console.log("[ListingsContext] DEV:", import.meta.env.DEV);
+
     // Throttle rapid successive calls
     const now = Date.now();
     if (now - lastFetchTime < 5000 && lastFetchTime !== 0) {
+      console.log("[ListingsContext] Throttling fetch - too soon");
       return;
     }
     setLastFetchTime(now);
@@ -112,22 +119,24 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
     setIsLoading(true);
     setError(null);
 
-    // In production, only use real data from Supabase
-    // In development, fall back to mock data if needed
-    if (!isSupabaseReady || !isOnline) {
-      if (import.meta.env.DEV) {
-        // Development: Use mock data as fallback
-        await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate loading
-        const listingsWithRealAddresses =
-          updateListingsWithRealAddresses(mockListings);
-        setListings(listingsWithRealAddresses);
-      } else {
-        // Production: Show empty state, don't use mock data
-        setListings([]);
-        setError(
-          "Unable to connect to the server. Please check your internet connection and try again."
-        );
-      }
+    // Force real data loading - ignore isSupabaseReady and isOnline checks for now
+    // This is a temporary fix to ensure we always try to fetch real data
+    const shouldUseMockData = false; // Set to false to force real data
+
+    if (shouldUseMockData && import.meta.env.DEV) {
+      console.log(
+        "[ListingsContext] Using fallback - Supabase not ready or offline"
+      );
+      // Development: Use mock data as fallback
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate loading
+      const listingsWithRealAddresses =
+        updateListingsWithRealAddresses(mockListings);
+      console.log(
+        "[ListingsContext] Using mock data:",
+        listingsWithRealAddresses.length,
+        "listings"
+      );
+      setListings(listingsWithRealAddresses);
       setIsLoading(false);
       return;
     }
@@ -172,10 +181,18 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
       );
 
       if (dbError) {
+        console.error("[ListingsContext] Database error:", dbError);
         throw new Error(
           `Failed to fetch listings: ${dbError.message || "Unknown error"}`
         );
       }
+
+      console.log(
+        "[ListingsContext] Raw data fetched:",
+        data?.length || 0,
+        "items"
+      );
+      console.log("[ListingsContext] Sample raw item:", data?.[0]);
 
       const fetchedListings: Listing[] = (data || [])
         .map((item: any): Listing | null => {
@@ -284,6 +301,14 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
         })
         .filter((listing): listing is Listing => listing !== null); // Filter out nulls
 
+      console.log(
+        "[ListingsContext] Processed listings:",
+        fetchedListings.length
+      );
+      console.log(
+        "[ListingsContext] Sample processed listing:",
+        fetchedListings[0]
+      );
       setListings(fetchedListings);
     } catch (err: any) {
       const errorMessage =
