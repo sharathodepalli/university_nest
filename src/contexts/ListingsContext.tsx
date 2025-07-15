@@ -160,7 +160,6 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
           )
         `
         )
-        .eq("status", "active") // Only fetch active listings
         .order("created_at", { ascending: false });
 
       performanceMonitor.recordMetric(
@@ -543,8 +542,13 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
     }
 
     try {
+      // Filter to only active listings for recommendations
+      const activeListings = listings.filter(
+        (listing) => listing.status === "active"
+      );
+
       // Ensure relevance and match scores are calculated for each listing
-      const listingsWithScores = listings.map((listing) => ({
+      const listingsWithScores = activeListings.map((listing) => ({
         ...listing,
         matchScore: MatchingService.calculateMatchScore(user, listing),
         relevanceScore: MatchingService.calculateRelevanceScore(user, listing),
