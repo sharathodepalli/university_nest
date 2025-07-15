@@ -27,6 +27,7 @@ import {
   canUserSendMessage,
 } from "../hooks/usePrivacy";
 import { VerificationBadge } from "../components/VerificationBadge";
+import ListingStatusManager from "../components/ListingStatusManager";
 import { format } from "date-fns";
 import { calculateDistance, formatDistance } from "../utils/haversine";
 
@@ -34,7 +35,8 @@ const ListingDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { listings, favoriteListings, toggleFavorite } = useListings();
+  const { listings, favoriteListings, toggleFavorite, updateListingStatus } =
+    useListings();
   const { createConversation } = useMessaging();
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -516,6 +518,18 @@ const ListingDetailPage: React.FC = () => {
                     <Phone className="w-4 h-4" />
                     <span>Contact Info</span>
                   </button>
+                </div>
+              )}
+
+              {/* Owner Section - Listing Management */}
+              {isOwner && (
+                <div className="space-y-4">
+                  <ListingStatusManager
+                    listing={listing}
+                    onStatusUpdate={(newStatus) =>
+                      updateListingStatus(listing.id, newStatus)
+                    }
+                  />
                 </div>
               )}
             </div>

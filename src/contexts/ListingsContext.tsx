@@ -19,17 +19,20 @@ import { calculateDistance } from "../utils/haversine"; // Imported calculateDis
 import { universityData, getNearbyUniversities } from "../data/universities"; // Imported universityData, getNearbyUniversities
 import { useTabVisibility } from "../hooks/useTabVisibility";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import { notificationService } from "../lib/notificationService";
 
 interface ListingsContextType {
   listings: Listing[];
   filteredListings: Listing[];
   recommendedListings: Listing[];
+  getUserListings: (userId: string) => Listing[];
   filters: SearchFilters;
   setFilters: (filters: SearchFilters) => void;
   addListing: (
     listing: Omit<Listing, "id" | "createdAt" | "updatedAt" | "host">
   ) => Promise<void>;
   updateListing: (id: string, updates: Partial<Listing>) => Promise<void>;
+  updateListingStatus: (id: string, status: Listing["status"]) => Promise<void>;
   deleteListing: (id: string) => Promise<void>;
   favoriteListings: string[];
   toggleFavorite: (listingId: string) => Promise<void>;
@@ -386,6 +389,12 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
     try {
       let currentFilteredListings = [...listings];
 
+      // Filter out rented and inactive listings from public search (show only active listings)
+      // Note: This only affects public search results, not owner views (use getUserListings for owner views)
+      currentFilteredListings = currentFilteredListings.filter(
+        (listing) => listing.status === "active"
+      );
+
       // Apply search query filter
       if (filters.query) {
         const searchTerm = filters.query.toLowerCase();
@@ -725,6 +734,96 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
   );
 
   /**
+   * Updates the status of a specific listing (active, rented, inactive)
+   */
+  const updateListingStatus = useCallback(
+    async (id: string, status: Listing["status"]) => {
+      try {
+        if (!user) {
+          throw new Error("User must be logged in to update listing status");
+        }
+
+        // Get the current listing to track status change
+        const currentListing = listings.find((l) => l.id === id);
+        if (!currentListing) {
+          throw new Error("Listing not found");
+        }
+
+        const oldStatus = currentListing.status;
+
+        if (!isSupabaseReady) {
+          // Mock update status for development
+          setListings((prev) =>
+            prev.map((listing) =>
+              listing.id === id && listing.hostId === user.id
+                ? { ...listing, status, updatedAt: new Date() }
+                : listing
+            )
+          );
+
+          // Handle notification for mock data
+          await notificationService.handleListingStatusChange(
+            { ...currentListing, status },
+            oldStatus,
+            status
+          );
+
+          return;
+        }
+
+        // Update only the status in Supabase
+        const { error } = await supabase
+          .from("listings")
+          .update({ status })
+          .eq("id", id)
+          .eq("host_id", user.id); // Ensure user owns the listing
+
+        if (error) throw error;
+
+        // Update local state immediately for better UX
+        setListings((prev) =>
+          prev.map((listing) =>
+            listing.id === id
+              ? { ...listing, status, updatedAt: new Date() }
+              : listing
+          )
+        );
+
+        // Handle notifications for status change
+        await notificationService.handleListingStatusChange(
+          { ...currentListing, status },
+          oldStatus,
+          status
+        );
+
+        console.log(
+          `[ListingsContext] Listing ${id} status updated to ${status}`
+        );
+      } catch (error: any) {
+        const errorMessage = error.message || "Failed to update listing status";
+        errorHandler.logError(
+          new Error(
+            `[ListingsContext] Update listing status failed: ${errorMessage}`
+          )
+        );
+        throw new Error(errorMessage);
+      }
+    },
+    [user, isSupabaseReady, listings]
+  );
+
+  /**
+   * Gets all listings for a specific user (including rented/inactive ones)
+   * This is used for profile pages and host management, where owners should see all their listings
+   */
+  const getUserListings = useCallback(
+    (userId: string): Listing[] => {
+      return listings.filter((listing) => listing.hostId === userId);
+    },
+    [listings]
+  );
+
+  /**
    * Deletes a listing from the database or mock data.
    */
   const deleteListing = useCallback(
@@ -872,10 +971,12 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
       listings,
       filteredListings,
       recommendedListings,
+      getUserListings,
       filters,
       setFilters,
       addListing,
       updateListing,
+      updateListingStatus,
       deleteListing,
       favoriteListings,
       toggleFavorite,
@@ -890,9 +991,11 @@ export const ListingsProvider: React.FC<{ children: ReactNode }> = ({
       listings,
       filteredListings,
       recommendedListings,
+      getUserListings,
       filters,
       addListing,
       updateListing,
+      updateListingStatus,
       deleteListing,
       favoriteListings,
       toggleFavorite,
