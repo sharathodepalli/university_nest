@@ -60,7 +60,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } = await supabase.auth.getSession();
 
         if (error) {
-          console.error("[AuthContext] Error getting initial session:", error);
           setIsLoading(false);
           return;
         }
@@ -78,10 +77,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const {
           data: { subscription },
         } = supabase.auth.onAuthStateChange(async (_, newSession) => {
-          console.log(
-            "Auth state changed - session:",
-            newSession ? "YES" : "NO"
-          );
           setSession(newSession);
           setSupabaseUser(newSession?.user ?? null);
 
@@ -105,7 +100,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Add loading timeout protection
     const loadingTimeout = setTimeout(() => {
       if (isLoading) {
-        console.warn("AuthContext loading timeout - forcing completion");
         setIsLoading(false);
       }
     }, 5000); // Reduced to 5 seconds
@@ -163,10 +157,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data: sessionData, error: sessionError } =
           await supabase.auth.getSession();
         if (sessionError || !sessionData.session) {
-          console.error(
-            "Could not get session for profile creation:",
-            sessionError
-          );
           setUser(null);
           return;
         }
@@ -200,7 +190,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               .single();
 
             if (fetchError) {
-              console.error("Error fetching existing profile:", fetchError);
               throw fetchError;
             }
 
@@ -236,7 +225,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(transformedExistingUser);
             return;
           } else {
-            console.error("Error creating profile:", createError);
             throw createError;
           }
         }
@@ -281,7 +269,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (error && status !== 406) {
-        console.error("Profile fetch error:", error);
         throw error;
       }
 
@@ -315,7 +302,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
       }
     } catch (error) {
-      console.error("Error in fetchUserProfile:", error);
       setUser(null);
     }
   };
@@ -327,7 +313,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (error) {
-      console.error("Login error:", error);
       throw error;
     }
 
@@ -351,7 +336,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (authError) {
-        console.error("Registration auth error:", authError);
         throw authError;
       }
       if (!authData.user) {
@@ -431,7 +415,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               .insert(updatedProfile);
 
             if (updateError) {
-              console.error("Failed to fix profile ID mismatch:", updateError);
               throw updateError;
             }
           } else if (existingProfile && existingProfile.id === userId) {
@@ -453,15 +436,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               .eq("id", userId);
 
             if (updateError) {
-              console.error(
-                "Failed to update profile with new data:",
-                updateError
-              );
               throw updateError;
             }
           }
         } else {
-          console.error("Failed to create user profile:", profileError);
           throw profileError;
         }
       }
@@ -478,7 +456,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
       }, 5000);
     } catch (error) {
-      console.error("Registration error:", error);
       throw error;
     }
   };
@@ -590,14 +567,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useTabVisibility({
     onVisible: () => {
       if (supabaseUser && !isLoading) {
-        refreshUser().catch(console.error);
+        refreshUser();
       }
     },
     onFocus: () => {
       // Clear any stuck loading states after 30 seconds
       setTimeout(() => {
         if (isLoading) {
-          console.warn("AuthContext focus timeout - forcing completion");
           setIsLoading(false);
         }
       }, 5000); // Reduced timeout

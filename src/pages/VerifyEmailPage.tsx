@@ -22,18 +22,14 @@ const VerifyEmailPage: React.FC = () => {
   const token = searchParams.get("token");
 
   useEffect(() => {
-    console.log("[VerifyEmailPage] useEffect triggered, token:", token);
-
     // Only show the verification page - don't auto-verify
     if (!token) {
-      console.log("[VerifyEmailPage] No token provided");
       setStatus("error");
       setMessage("Invalid verification link. No token provided.");
       return;
     }
 
     // Set initial state to require user interaction
-    console.log("[VerifyEmailPage] Setting initial verifying state");
     setStatus("verifying");
     setMessage(
       "Ready to verify your email. Click the button below to complete verification."
@@ -41,30 +37,19 @@ const VerifyEmailPage: React.FC = () => {
   }, [token]);
 
   const handleManualVerification = async () => {
-    console.log("[VerifyEmailPage] Manual verification button clicked");
-
     if (!token) {
-      console.log("[VerifyEmailPage] No token available for verification");
       setStatus("error");
       setMessage("Invalid verification link. No token provided.");
       return;
     }
 
     if (hasVerified.current) {
-      console.log(
-        "[VerifyEmailPage] Already verified, skipping duplicate call"
-      );
       return;
     }
 
-    console.log("[VerifyEmailPage] Starting verification process");
     hasVerified.current = true;
     setStatus("loading");
     setMessage("Verifying your email, please wait...");
-
-    console.log(
-      `[VerifyEmailPage] Manual verification started for token: ${token}`
-    );
 
     try {
       // Add timeout to prevent hanging
@@ -79,20 +64,11 @@ const VerifyEmailPage: React.FC = () => {
         timeoutPromise,
       ])) as any;
 
-      console.log("[VerifyEmailPage] Verification result:", result);
-
       if (result.success) {
-        console.log(
-          "[VerifyEmailPage] Verification successful in backend.",
-          result
-        );
         setStatus("success");
 
         // Check if a user session is active in the browser
         if (session?.user && refreshUser) {
-          console.log(
-            "[VerifyEmailPage] User is logged in. Refreshing user data and redirecting."
-          );
           setMessage(
             "Email verification successful! Redirecting to your profile..."
           );
@@ -100,9 +76,6 @@ const VerifyEmailPage: React.FC = () => {
           setTimeout(() => navigate("/profile"), 3000);
         } else {
           // If user is NOT logged in, show a message to log in.
-          console.log(
-            "[VerifyEmailPage] User is not logged in. Displaying message to log in."
-          );
           setMessage(
             "Your email has been verified! Please log in to your account to see your updated profile."
           );
@@ -110,10 +83,6 @@ const VerifyEmailPage: React.FC = () => {
       } else {
         // Handle "already used" tokens more gracefully
         if (result.message && result.message.includes("already been used")) {
-          console.log(
-            "[VerifyEmailPage] Token already used - checking if user is actually verified"
-          );
-
           // Check if the user is actually verified in their profile
           if (session?.user) {
             try {
@@ -126,10 +95,7 @@ const VerifyEmailPage: React.FC = () => {
               setTimeout(() => navigate("/browse"), 2000);
               return;
             } catch (refreshError) {
-              console.log(
-                "[VerifyEmailPage] Could not refresh user data:",
-                refreshError
-              );
+              // Could not refresh user data
             }
           }
 
@@ -139,10 +105,6 @@ const VerifyEmailPage: React.FC = () => {
             "Your email has already been verified! Please log in to access your account."
           );
         } else {
-          console.warn(
-            "[VerifyEmailPage] Verification failed in backend.",
-            result
-          );
           setStatus("error");
           setMessage(
             result.message ||
@@ -151,7 +113,6 @@ const VerifyEmailPage: React.FC = () => {
         }
       }
     } catch (error: unknown) {
-      console.error("[VerifyEmailPage] Unexpected error:", error);
       setStatus("error");
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
