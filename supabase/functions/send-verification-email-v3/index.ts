@@ -45,14 +45,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    // SMTP_PASS is now optional since we have fallback mode
     if (!SMTP_PASS) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        message: 'Missing SMTP password. Please configure SMTP_PASS environment variable.' 
-      }), {
-        headers: corsHeaders,
-        status: 500,
-      });
+      console.log('⚠️ No SMTP_PASS found, will use fallback mode');
     }
 
 

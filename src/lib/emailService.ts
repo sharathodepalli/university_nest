@@ -61,14 +61,31 @@ export class ClientEmailService implements EmailServiceInterface {
         return false;
       }
 
-      if (result?.success) {
+      // Handle string responses that might need parsing
+      let parsedResult = result;
+      if (typeof result === 'string') {
+        try {
+          parsedResult = JSON.parse(result);
+          console.log('📧 Parsed result:', parsedResult);
+        } catch (parseError) {
+          console.error('❌ Failed to parse result as JSON:', result);
+          return false;
+        }
+      }
+
+      if (parsedResult?.success) {
         console.log('✅ Verification email sent successfully');
+        console.log('📧 Email details:', {
+          message: parsedResult.message,
+          tokenId: parsedResult.tokenId,
+          note: parsedResult.note
+        });
         return true;
       } else {
         console.error('❌ Edge Function returned error:', {
-          result: result,
-          message: result?.message,
-          error: result?.error
+          result: parsedResult,
+          message: parsedResult?.message,
+          error: parsedResult?.error
         });
         return false;
       }
