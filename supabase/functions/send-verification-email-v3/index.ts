@@ -100,25 +100,133 @@ Deno.serve(async (req) => {
       const baseUrl = isDevelopment ? 'http://localhost:3000' : APP_URL;
       const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
 
-      // For now, let's log the verification URL and mark as successful
-      // This allows the application to work while we resolve SMTP library issues
-      console.log(`✅ Verification URL generated: ${verifyUrl}`);
-      console.log(`📧 Email would be sent to: ${email}`);
-      console.log(`🔑 Token: ${verificationToken}`);
+      console.log(`📧 Attempting to send email to: ${email}`);
+      console.log(`🔗 Verification URL: ${verifyUrl}`);
       
-      // TODO: Replace with working SMTP solution
-      // For now, return success so the app works
+      // **ACTUAL EMAIL SENDING WITH NATIVE DENO SMTP**
       
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: 'Verification email would be sent (logging for now)',
-        tokenId: insertData.id,
-        verificationUrl: verifyUrl,
-        note: 'Email logging enabled for testing - check server logs'
-      }), {
-        headers: corsHeaders,
-        status: 200,
+      // Create TLS connection to SMTP server
+      const conn = await Deno.connectTls({
+        hostname: SMTP_HOST,
+        port: SMTP_PORT,
       });
+
+      const reader = conn.readable.getReader();
+      const writer = conn.writable.getWriter();
+
+      // Helper function to read SMTP response
+      const readResponse = async (): Promise<string> => {
+        const { value } = await reader.read();
+        return new TextDecoder().decode(value);
+      };
+
+      // Helper function to send SMTP command
+      const sendCommand = async (command: string): Promise<void> => {
+        await writer.write(new TextEncoder().encode(command + '\r\n'));
+      };
+
+      try {
+        // SMTP conversation
+        console.log('📡 Connecting to SMTP server...');
+        await readResponse(); // Initial greeting
+        
+        await sendCommand(`EHLO ${SMTP_HOST}`);
+        await readResponse();
+        
+        await sendCommand('AUTH LOGIN');
+        await readResponse();
+        
+        // Send username (base64 encoded)
+        await sendCommand(btoa(SMTP_USER));
+        await readResponse();
+        
+        // Send password (base64 encoded)
+        await sendCommand(btoa(SMTP_PASS));
+        await readResponse();
+        
+        console.log('✅ SMTP authentication successful');
+        
+        // Send email
+        await sendCommand(`MAIL FROM:<${SMTP_USER}>`);
+        await readResponse();
+        
+        await sendCommand(`RCPT TO:<${email}>`);
+        await readResponse();
+        
+        await sendCommand('DATA');
+        await readResponse();
+        
+        // Email content
+        const emailContent = `Subject: Verify Your UniNest Email Address
+From: UniNest <${SMTP_USER}>
+To: ${email}
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Your Email</title>
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+        <h1 style="color: #667eea;">Welcome to UniNest!</h1>
+        <p style="font-size: 16px; color: #333;">Please verify your email address to complete your registration.</p>
+        
+        <div style="margin: 30px 0;">
+            <a href="${verifyUrl}" 
+               style="display: inline-block; padding: 12px 30px; background-color: #667eea; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+               Verify My Email
+            </a>
+        </div>
+        
+        <p style="font-size: 14px; color: #666;">
+            If the button doesn't work, copy and paste this link into your browser:<br>
+            <a href="${verifyUrl}">${verifyUrl}</a>
+        </p>
+        
+        <p style="font-size: 12px; color: #999; margin-top: 30px;">
+            This link will expire in 24 hours. If you didn't create an account with UniNest, please ignore this email.
+        </p>
+    </div>
+</body>
+</html>
+
+.`;
+
+        await writer.write(new TextEncoder().encode(emailContent));
+        await sendCommand('.');
+        await readResponse();
+        
+        await sendCommand('QUIT');
+        await readResponse();
+        
+        console.log('✅ Email sent successfully via SMTP');
+        
+        // Close connection
+        await writer.close();
+        await reader.cancel();
+        
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: 'Verification email sent successfully',
+          tokenId: insertData.id,
+          verificationUrl: verifyUrl
+        }), {
+          headers: corsHeaders,
+          status: 200,
+        });
+
+      } catch (smtpError: any) {
+        console.error('SMTP Error:', smtpError);
+        // Close connection on error
+        try {
+          await writer.close();
+          await reader.cancel();
+        } catch {}
+        
+        throw smtpError;
+      }
 
     } catch (emailError: any) {
       console.error('Email Error:', emailError);

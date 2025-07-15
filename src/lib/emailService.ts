@@ -62,7 +62,7 @@ export class ClientEmailService implements EmailServiceInterface {
       }
 
       if (result?.success) {
-        console.log('✅ Verification email sent via Office 365 SMTP');
+        console.log('✅ Verification email sent successfully');
         return true;
       } else {
         console.error('❌ Edge Function returned error:', {
