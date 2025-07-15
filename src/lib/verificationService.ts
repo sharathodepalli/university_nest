@@ -224,26 +224,24 @@ class VerificationService {
   }
 
   /**
-   * Send verification email using Office 365 SMTP
+   * Send verification email using Edge Function (Resend API)
    * Changed to private as it's an internal helper for requestEmailVerification
    */
   private async sendVerificationEmail(
     email: string,
     token: string,
-    studentName: string | undefined,
+    _studentName: string | undefined,
     userId: string
   ): Promise<VerificationResult> {
     try {
-      // Create verification URL
-      const baseUrl = window.location.origin;
-      const verificationUrl = `${baseUrl}/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
-
-      // Send email using Office 365 SMTP
+      console.log('📧 Sending verification email via Edge Function...');
+      
+      // Send email using Edge Function (Resend API)
       const emailResult = await emailService.sendVerificationEmail({
         userEmail: email,
         verificationToken: token,
-        verificationUrl: verificationUrl,
-        userId: userId // Pass the userId to the email service
+        verificationUrl: '', // URL is generated in Edge Function
+        userId: userId
       });
 
       if (emailResult) {
@@ -253,7 +251,11 @@ class VerificationService {
           message: 'Verification email sent successfully'
         };
       } else {
-        throw new Error('Failed to send email via Office 365 SMTP');
+        console.error('❌ Edge Function failed to send email');
+        return {
+          success: false,
+          message: 'Failed to send verification email. Please check your internet connection and try again.'
+        };
       }
 
     } catch (error: any) {

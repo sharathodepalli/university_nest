@@ -58,6 +58,16 @@ export class ClientEmailService implements EmailServiceInterface {
           hint: error.hint,
           code: error.code
         });
+        
+        // Log specific error types for debugging
+        if (error.message?.includes('Failed to load resource')) {
+          console.error('🔍 Network error: Could not reach Edge Function');
+        } else if (error.code === '500') {
+          console.error('🔍 Server error: Edge Function returned 500 - likely missing RESEND_API_KEY');
+        } else if (error.code === '503') {
+          console.error('🔍 Service unavailable: Email service not configured');
+        }
+        
         return false;
       }
 

@@ -169,8 +169,8 @@ Deno.serve(async (req) => {
     try {
       console.log('📤 Sending via Resend API');
       
-      // Use verified Resend domain
-      const fromEmail = 'UniNest <onboarding@resend.dev>';
+      // Use production domain
+      const fromEmail = 'UniNest <noreply@uninest.us>';
       
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
