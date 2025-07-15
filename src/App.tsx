@@ -11,6 +11,7 @@ import { MessagingProvider } from "./contexts/MessagingContext";
 import { ProductionErrorBoundary } from "./components/ProductionErrorBoundary";
 import OfflineNotice from "./components/OfflineNotice";
 import Header from "./components/Header";
+import Footer from "./components/Footer";
 
 import HomePage from "./pages/HomePage";
 import BrowsePage from "./pages/BrowsePage";
@@ -26,6 +27,7 @@ import ChangePasswordPage from "./pages/ChangePasswordPage";
 import PrivacySettingsPage from "./pages/PrivacySettingsPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import AboutPage from "./pages/AboutPage";
 import VerificationPage from "./pages/VerificationPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 
@@ -170,6 +172,14 @@ const AppContent: React.FC = () => {
               }
             />
             <Route
+              path="/about"
+              element={
+                <ProductionErrorBoundary>
+                  <AboutPage />
+                </ProductionErrorBoundary>
+              }
+            />
+            <Route
               path="/change-password"
               element={
                 <ProtectedRoute>
@@ -250,6 +260,7 @@ const AppContent: React.FC = () => {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+        <Footer />
       </div>
     </Router>
   );

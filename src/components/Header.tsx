@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   AlertCircle,
+  Info,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useMessaging } from "../contexts/MessagingContext";
@@ -27,6 +28,7 @@ const Header: React.FC = () => {
   const navItems = [
     { path: "/", label: "Home", icon: Home },
     { path: "/browse", label: "Browse", icon: Search },
+    { path: "/about", label: "About", icon: Info },
     { path: "/create", label: "Post Room", icon: PlusCircle },
     { path: "/messages", label: "Messages", icon: MessageCircle },
     { path: "/favorites", label: "Favorites", icon: Heart },
